@@ -1,0 +1,44 @@
+name: Bootstrap Flutter Foundation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - tool/bootstrap_foundation.sh
+      - .github/workflows/bootstrap-foundation.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Bootstrap SariSupply Flutter monorepo
+        run: bash tool/bootstrap_foundation.sh
+
+      - name: Commit generated Flutter foundation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          if git diff --cached --quiet; then
+            echo "No generated changes to commit."
+            exit 0
+          fi
+          git commit -m "chore: bootstrap Flutter monorepo"
+          git push origin HEAD:main
