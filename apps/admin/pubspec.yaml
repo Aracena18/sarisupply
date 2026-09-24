@@ -1,0 +1,24 @@
+name: sarisupply_admin
+description: SariSupply admin and operations Flutter Web application.
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.1
+  sarisupply_core:
+    path: ../../packages/sarisupply_core
+  sarisupply_design_system:
+    path: ../../packages/sarisupply_design_system
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
