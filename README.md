@@ -1,21 +1,62 @@
 # SariSupply
 
-SariSupply is an offline-first retail operating system and distribution platform for medium-sized sari-sari stores.
+SariSupply is an **offline-first retail operating system and distribution platform** for medium-sized sari-sari stores.
 
-## Flutter applications
+## Flutter everywhere
 
-All user-facing applications in this project are built with **Flutter**:
+All user-facing applications in SariSupply use **Flutter**:
 
 - `apps/pos` — SariSupply POS for Android tablets/mobile devices
 - `apps/driver` — SariSupply Driver for Android
 - `apps/admin` — SariSupply Admin / Operations for Flutter Web
 
-## Backend
+There is no React or Next.js frontend in the approved architecture.
 
-Firebase will provide cloud infrastructure for authentication, Firestore, Cloud Functions, Storage, notifications, App Check, and monitoring. The POS will later use Drift/SQLite for durable offline-first operation.
+## Monorepo
 
-## Architecture
+The workspace is managed with **Melos** and **Riverpod**.
 
-This repository is a Flutter/Dart monorepo. Shared code belongs in `packages/`; applications must not import one another directly.
+Shared packages:
 
-The first milestone establishes the repository, Flutter workspace, shared packages, Riverpod foundation, tests, and continuous integration before business features are added.
+- `packages/sarisupply_core`
+- `packages/sarisupply_models`
+- `packages/sarisupply_design_system`
+
+Applications must not import one another directly.
+
+## Backend direction
+
+Firebase will provide Authentication, Firestore, Cloud Functions, Storage, FCM, App Check, and Crashlytics. The POS will later use **Drift/SQLite** for durable offline-first transactions and synchronization.
+
+## First local setup
+
+Clone the repository and generate the standard Flutter Android/Web platform folders:
+
+```bash
+git clone https://github.com/Aracena18/sarisupply.git
+cd sarisupply
+bash tool/bootstrap_local.sh
+```
+
+That command will generate:
+
+- Android platform files for POS
+- Android platform files for Driver
+- Web platform files for Admin
+- workspace dependencies
+- tests, analysis, and debug/release build verification
+
+## Verify again
+
+```bash
+bash tool/verify_local.sh
+```
+
+## Documentation
+
+- `docs/architecture/SARI_SUPPLY_PRODUCTION_PLAN.md`
+- `docs/superpowers/plans/2026-09-25-sarisupply-foundation.md`
+
+## GitHub Actions
+
+Actions was tested with a minimal smoke workflow, but GitHub returned `startup_failure` before allocating a runner. The failing workflows were removed so `main` is not left permanently red. Once Actions is available for the repository/account, the same local verification commands can be moved into CI.
