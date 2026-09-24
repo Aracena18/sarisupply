@@ -1,0 +1,22 @@
+name: sarisupply
+
+packages:
+  - apps/**
+  - packages/**
+
+command:
+  bootstrap:
+    runPubGetInParallel: false
+
+scripts:
+  format:
+    run: melos exec --fail-fast -- "dart format --output=none --set-exit-if-changed lib test"
+
+  analyze:
+    run: melos exec --fail-fast -- "flutter analyze"
+
+  test:
+    run: melos exec --fail-fast --dir-exists=test -- "flutter test"
+
+  verify:
+    run: melos run format && melos run analyze && melos run test
