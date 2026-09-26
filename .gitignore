@@ -11,6 +11,10 @@ coverage/
 # Internal package lockfiles (apps/root lockfiles are committed)
 packages/**/pubspec.lock
 
+# Node / Firebase Functions
+node_modules/
+firebase/functions/lib/
+
 # IDE
 .idea/
 .vscode/
