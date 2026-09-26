@@ -1,1 +1,1 @@
-// Public exports are added as Firebase adapters are implemented.
+export 'src/environment/sarisupply_environment.dart';
