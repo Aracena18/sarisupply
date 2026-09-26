@@ -10,10 +10,14 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_riverpod: ^2.6.1
+  sarisupply_auth:
+    path: ../../packages/sarisupply_auth
   sarisupply_core:
     path: ../../packages/sarisupply_core
   sarisupply_design_system:
     path: ../../packages/sarisupply_design_system
+  sarisupply_firebase:
+    path: ../../packages/sarisupply_firebase
 
 dev_dependencies:
   flutter_test:
