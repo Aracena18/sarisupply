@@ -18,8 +18,7 @@ final class Money {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is Money && other.centavos == centavos;
+      identical(this, other) || other is Money && other.centavos == centavos;
 
   @override
   int get hashCode => centavos.hashCode;
