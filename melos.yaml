@@ -16,7 +16,7 @@ scripts:
     run: dart run melos exec --fail-fast -- "flutter analyze"
 
   test:
-    run: dart run melos exec --fail-fast --dir-exists=test -- "flutter test"
+    run: dart run melos exec --fail-fast --concurrency=1 --dir-exists=test -- "flutter test"
 
   verify:
     run: dart run melos run format && dart run melos run analyze && dart run melos run test
