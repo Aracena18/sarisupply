@@ -6,6 +6,10 @@ build/
 coverage/
 .flutter-plugins
 .flutter-plugins-dependencies
+**/pubspec_overrides.yaml
+
+# Internal package lockfiles (apps/root lockfiles are committed)
+packages/**/pubspec.lock
 
 # IDE
 .idea/
