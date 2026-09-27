@@ -23,6 +23,10 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
   with tested Firestore rules deployed to both projects.
 - Merchant application draft, submission, Admin review, rejection/resubmission,
   and idempotent approval logic, with callable endpoints and a Flutter adapter.
+- Owner-only branch creation/deactivation, Manager invitations and acceptance,
+  Manager access changes/removal, and Flutter membership and branch gateways.
+- Firestore rules and indexes for personal merchant discovery and active branch
+  queries deployed to both Firebase projects.
 - Tenant and auth records, branch-scoped Owner/Manager policy, and an offline
   credential age/version/clock policy.
 - POS local PIN derivation using PBKDF2-HMAC-SHA256 with 210,000 iterations,
@@ -32,8 +36,8 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
 
 - Cloud Functions deployment, Admin pre-authorization of an existing signed-in
   user, and application login screens.
-- Protected merchant approval, membership, branch, device, and cashier Cloud
-  Functions with Firestore rules and emulator tests.
+- Deployment of merchant approval and membership Cloud Functions, plus protected
+  device and cashier functions with Firestore rules and emulator tests.
 - Secure device-local credential storage, online enrollment, offline login
   retry controls, and POS/Admin authentication screens.
 

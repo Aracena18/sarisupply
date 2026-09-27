@@ -7,3 +7,12 @@ export {
   saveMerchantApplicationDraft,
   submitMerchantApplication,
 } from './merchant/application-functions';
+export {
+  acceptManagerInvitation,
+  createManagerInvitation,
+  listMyInvitations,
+  removeManager,
+  revokeManagerInvitation,
+  updateManagerAccess,
+} from './membership/invitation-functions';
+export { createBranch, deactivateBranch } from './membership/branch-functions';

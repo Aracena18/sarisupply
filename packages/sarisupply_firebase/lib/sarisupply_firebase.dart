@@ -4,3 +4,4 @@ export 'src/auth/google_identity_gateway.dart';
 export 'src/bootstrap/firebase_bootstrap.dart';
 export 'src/environment/sarisupply_environment.dart';
 export 'src/functions/merchant_application_functions.dart';
+export 'src/functions/membership_functions.dart';

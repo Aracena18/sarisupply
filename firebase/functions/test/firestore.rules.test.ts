@@ -6,7 +6,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, setDoc, where } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 
 let environment: RulesTestEnvironment;
@@ -29,6 +29,9 @@ beforeEach(async () => {
     const db = context.firestore();
     await setDoc(doc(db, 'users/owner-1'), { uid: 'owner-1' });
     await setDoc(doc(db, 'users/other-1'), { uid: 'other-1' });
+    await setDoc(doc(db, 'users/owner-1/merchantRefs/merchant-1'), {
+      merchantId: 'merchant-1', role: 'owner', status: 'active',
+    });
     await setDoc(doc(db, 'merchants/merchant-1'), { status: 'active' });
     await setDoc(doc(db, 'merchants/merchant-1/memberships/owner-1'), {
       userId: 'owner-1', merchantId: 'merchant-1', role: 'owner',
@@ -71,10 +74,27 @@ describe('Firestore authorization rules', () => {
     await assertFails(getDoc(doc(db, 'merchants/merchant-1/memberships/owner-1')));
   });
 
+  it('lets a human list only their own merchant references', async () => {
+    const owner = environment.authenticatedContext('owner-1').firestore();
+    const other = environment.authenticatedContext('other-1').firestore();
+    await assertSucceeds(getDocs(collection(owner, 'users/owner-1/merchantRefs')));
+    await assertFails(getDocs(collection(other, 'users/owner-1/merchantRefs')));
+  });
+
   it('limits Manager branch reads to assigned branches', async () => {
     const db = environment.authenticatedContext('manager-1').firestore();
     await assertSucceeds(getDoc(doc(db, 'merchants/merchant-1/branches/branch-a')));
     await assertFails(getDoc(doc(db, 'merchants/merchant-1/branches/branch-b')));
+  });
+
+  it('lets an Owner query active branches but denies a scoped Manager list', async () => {
+    const owner = environment.authenticatedContext('owner-1').firestore();
+    const manager = environment.authenticatedContext('manager-1').firestore();
+    const path = 'merchants/merchant-1/branches';
+    const active = (db: typeof owner) => query(collection(db, path),
+      where('status', '==', 'active'), where('merchantId', '==', 'merchant-1'));
+    await assertSucceeds(getDocs(active(owner)));
+    await assertFails(getDocs(active(manager)));
   });
 
   it('revocation in Firestore overrides a previously valid membership', async () => {
@@ -122,5 +142,6 @@ describe('Firestore authorization rules', () => {
     await assertFails(setDoc(doc(db, 'merchants/merchant-1/memberships/owner-1'), {
       status: 'active', role: 'owner',
     }));
+    await assertFails(getDoc(doc(db, 'merchants/merchant-1/managerInvites/invite-1')));
   });
 });
