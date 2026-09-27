@@ -16,3 +16,8 @@ export {
   updateManagerAccess,
 } from './membership/invitation-functions';
 export { createBranch, deactivateBranch } from './membership/branch-functions';
+export {
+  activatePosDevice,
+  getDeviceBootstrap,
+  revokePosDevice,
+} from './device/device-functions';

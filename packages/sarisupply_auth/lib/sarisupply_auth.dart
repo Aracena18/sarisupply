@@ -1,5 +1,6 @@
 export 'src/auth_repository.dart';
 export 'src/auth_user.dart';
+export 'src/device_repository.dart';
 export 'src/merchant_application_repository.dart';
 export 'src/membership_repository.dart';
 export 'src/merchant_context.dart';

@@ -25,6 +25,8 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
   and idempotent approval logic, with callable endpoints and a Flutter adapter.
 - Owner-only branch creation/deactivation, Manager invitations and acceptance,
   Manager access changes/removal, and Flutter membership and branch gateways.
+- POS device activation, custom-token identity, branch-scoped revocation, and
+  protected bootstrap, with separate human and device Firebase Auth sessions.
 - Firestore rules and indexes for personal merchant discovery and active branch
   queries deployed to both Firebase projects.
 - Tenant and auth records, branch-scoped Owner/Manager policy, and an offline
@@ -36,8 +38,8 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
 
 - Cloud Functions deployment, Admin pre-authorization of an existing signed-in
   user, and application login screens.
-- Deployment of merchant approval and membership Cloud Functions, plus protected
-  device and cashier functions with Firestore rules and emulator tests.
+- Deployment of merchant approval, membership, and device Cloud Functions, plus
+  protected cashier functions with Firestore rules and emulator tests.
 - Secure device-local credential storage, online enrollment, offline login
   retry controls, and POS/Admin authentication screens.
 

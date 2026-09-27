@@ -8,9 +8,10 @@ import 'bootstrap/pos_bootstrap.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await FirebaseBootstrap.initializeHuman(
-    selectPosFirebaseOptions(const String.fromEnvironment('SARISUPPLY_ENV')),
-  );
+  final options =
+      selectPosFirebaseOptions(const String.fromEnvironment('SARISUPPLY_ENV'));
+  await FirebaseBootstrap.initializeHuman(options);
+  await FirebaseBootstrap.initializeDevice(options);
   runApp(const ProviderScope(child: SariSupplyPosApp()));
 }
 

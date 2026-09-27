@@ -1,9 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:sarisupply_auth/sarisupply_auth.dart';
 
 import '../bootstrap/firebase_bootstrap.dart';
 
-final class FirebaseDeviceAuthRepository {
+final class FirebaseDeviceAuthRepository implements DeviceTokenSession {
   FirebaseDeviceAuthRepository({required FirebaseAuth auth}) : _auth = auth {
     if (auth.app.name != FirebaseBootstrap.deviceAppName) {
       throw StateError('Device authentication requires the named device app');
@@ -21,6 +22,7 @@ final class FirebaseDeviceAuthRepository {
 
   final FirebaseAuth _auth;
 
+  @override
   Future<String> signInWithCustomToken(String token) async {
     if (token.trim().isEmpty) {
       throw ArgumentError.value(token, 'token', 'must not be empty');
@@ -32,4 +34,7 @@ final class FirebaseDeviceAuthRepository {
     }
     return uid;
   }
+
+  @override
+  Future<void> signOut() => _auth.signOut();
 }
