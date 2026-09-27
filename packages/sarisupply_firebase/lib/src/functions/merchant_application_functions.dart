@@ -31,7 +31,7 @@ final class FirebaseMerchantCallableGateway implements MerchantCallableGateway {
 }
 
 final class MerchantApplicationFunctions
-    implements MerchantApplicationRepository {
+    implements MerchantApplicationRepository, AdminReviewRepository {
   MerchantApplicationFunctions({
     required FirebaseAuth auth,
     required FirebaseFirestore firestore,
@@ -67,6 +67,13 @@ final class MerchantApplicationFunctions
         .snapshots()
         .map((snapshot) => snapshot.docs.map(_applicationFromDoc).toList());
   }
+
+  @override
+  Stream<List<MerchantApplication>> watchPending() => _firestore
+      .collection('merchantApplications')
+      .where('status', isEqualTo: 'pending_review')
+      .snapshots()
+      .map((snapshot) => snapshot.docs.map(_applicationFromDoc).toList());
 
   static MerchantApplication _applicationFromDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> snapshot,
@@ -105,6 +112,7 @@ final class MerchantApplicationFunctions
     });
   }
 
+  @override
   Future<MerchantReviewResult> review({
     required String applicationId,
     required String decision,

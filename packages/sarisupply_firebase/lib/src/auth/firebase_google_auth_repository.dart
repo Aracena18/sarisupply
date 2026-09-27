@@ -6,6 +6,14 @@ import 'package:sarisupply_auth/sarisupply_auth.dart';
 import 'google_identity_gateway.dart';
 
 final class FirebaseGoogleAuthRepository implements AuthRepository {
+  factory FirebaseGoogleAuthRepository.forDefaultApp({
+    String serverClientId = '',
+  }) =>
+      FirebaseGoogleAuthRepository(
+        auth: FirebaseAuth.instanceFor(app: Firebase.app()),
+        serverClientId: serverClientId,
+      );
+
   FirebaseGoogleAuthRepository({
     required FirebaseAuth auth,
     GoogleIdentityGateway? gateway,

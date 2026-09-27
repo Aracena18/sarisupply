@@ -121,4 +121,17 @@ void main() {
     expect((await service.loginOffline('cashier-1', '123456')).status,
         CashierLoginStatus.requiresOnlineReenrollment);
   });
+
+  test('clearing a device removes its local verifier and queued events',
+      () async {
+    await service.loginOnline('cashier-1', '123456');
+    await store.queueFailedAttempt(
+        deviceId: 'device-1',
+        cashierId: 'cashier-1',
+        failedAttempts: 5,
+        occurredAt: now);
+    await store.deleteForDevice('device-1');
+    expect(await store.read('device-1', 'cashier-1'), isNull);
+    expect(await store.queuedSecurityEvents('device-1'), isEmpty);
+  });
 }

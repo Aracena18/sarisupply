@@ -38,17 +38,20 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
   a 16-byte random salt, and a 32-byte verifier.
 - Keystore-backed POS credential storage, online enrollment after permanent
   PIN verification, seven-day offline login checks, and local retry cooldowns.
+- POS sign-in, merchant application, device activation, cashier login, and
+  temporary PIN change screens, plus Admin sign-in and application review UI.
 
 ## Still needed for the authentication milestone
 
 - Cloud Functions deployment and Secret Manager pepper provisioning after
   billing is linked to the Firebase projects.
-- Admin pre-authorization of an existing signed-in user, POS/Admin login
-  screens, and end-to-end device activation and cashier enrollment UI.
+- Admin pre-authorization of an existing signed-in user and live end-to-end
+  testing of device activation and cashier enrollment.
 - Upload of queued offline PIN failure events after connectivity returns.
 
-The POS, Driver, and Admin applications still show foundation screens. Sales,
-inventory, warehouse, delivery, and reporting are later milestones.
+The Driver application still shows a foundation screen. The POS currently
+unlocks only an authenticated cashier session; sales, inventory, warehouse,
+delivery, and reporting are later milestones.
 
 Both new projects are currently on the no-cost Spark plan. Cloud Storage
 bucket creation and Cloud Functions deployment require a linked billing account

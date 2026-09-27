@@ -145,6 +145,14 @@ final class SecureOfflineCredentialStore {
   Future<void> delete(String deviceId, String cashierId) =>
       _keys.delete(_credentialKey(deviceId, cashierId));
 
+  Future<void> deleteForDevice(String deviceId) async {
+    final records = await listForDevice(deviceId);
+    for (final record in records) {
+      await delete(deviceId, record.cashierId);
+    }
+    await clearQueuedSecurityEvents(deviceId);
+  }
+
   Future<List<StoredOfflineCredential>> listForDevice(String deviceId) async {
     final entries = await _keys.readAll();
     final prefix = 'offline-credential:$deviceId:';

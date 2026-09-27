@@ -1,3 +1,4 @@
+export 'src/admin_review_repository.dart';
 export 'src/auth_repository.dart';
 export 'src/auth_user.dart';
 export 'src/cashier_repository.dart';

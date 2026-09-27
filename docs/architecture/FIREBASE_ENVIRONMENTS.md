@@ -26,8 +26,8 @@ Gradle release configuration still uses debug signing and is not suitable for
 distribution.
 
 App startup requires `--dart-define=SARISUPPLY_ENV=dev` or `prod`. Native
-Google Sign-In additionally requires `GOOGLE_SERVER_CLIENT_ID` when a user
-starts sign-in. The Development web OAuth client ID is
+Google Sign-In uses the registered web OAuth client ID for the selected project;
+`GOOGLE_SERVER_CLIENT_ID` can override it for testing. The Development ID is
 `594903185972-1dlngb8a6i0j6i87ss6nbaab2u1krdqg.apps.googleusercontent.com`;
 the Production ID is
 `110781011916-88507t6k0glkskp51460qa6bcm6oti8b.apps.googleusercontent.com`.

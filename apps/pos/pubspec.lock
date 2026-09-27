@@ -74,7 +74,7 @@ packages:
     source: hosted
     version: "5.7.3"
   cloud_functions:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: cloud_functions
       sha256: "60ab011bcf99c18f0db95c3c958d83da4b846547267fe69984c4faee0008a7c7"
@@ -154,7 +154,7 @@ packages:
     source: hosted
     version: "0.1.2"
   firebase_auth:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: firebase_auth
       sha256: "144fa22926b629e797ecc757db5d31b145aeedf6018160296dae945d98a98fb5"
