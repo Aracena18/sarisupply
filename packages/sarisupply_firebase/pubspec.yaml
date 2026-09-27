@@ -14,6 +14,8 @@ dependencies:
   cloud_firestore: ^6.10.0
   cloud_functions: ^6.5.0
   google_sign_in: ^7.2.0
+  sarisupply_auth:
+    path: ../sarisupply_auth
 
 dev_dependencies:
   flutter_test:

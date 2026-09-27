@@ -25,6 +25,15 @@ registrations, and regenerate the Production Google Services files. The current
 Gradle release configuration still uses debug signing and is not suitable for
 distribution.
 
+App startup requires `--dart-define=SARISUPPLY_ENV=dev` or `prod`. Native
+Google Sign-In additionally requires `GOOGLE_SERVER_CLIENT_ID` when a user
+starts sign-in. The Development web OAuth client ID is
+`594903185972-1dlngb8a6i0j6i87ss6nbaab2u1krdqg.apps.googleusercontent.com`;
+the Production ID is
+`110781011916-88507t6k0glkskp51460qa6bcm6oti8b.apps.googleusercontent.com`.
+The Development Auth project authorizes `localhost` for local Admin web testing.
+The Production project does not authorize `localhost`.
+
 The Firestore databases are Standard edition, have delete protection enabled,
 and use the repository's deny-all security rules. Do not open client access
 until the tenant authorization rules and their emulator tests are complete.

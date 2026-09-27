@@ -328,6 +328,13 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.6.1"
+  sarisupply_auth:
+    dependency: transitive
+    description:
+      path: "../../packages/sarisupply_auth"
+      relative: true
+    source: path
+    version: "0.1.0"
   sarisupply_core:
     dependency: "direct main"
     description:
@@ -346,6 +353,13 @@ packages:
     dependency: "direct main"
     description:
       path: "../../packages/sarisupply_firebase"
+      relative: true
+    source: path
+    version: "0.1.0"
+  sarisupply_models:
+    dependency: transitive
+    description:
+      path: "../../packages/sarisupply_models"
       relative: true
     source: path
     version: "0.1.0"
