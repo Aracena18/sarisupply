@@ -10,7 +10,7 @@
     "grant-admin": "node lib/admin/grant-admin.js",
     "test": "vitest run --exclude '**/*.rules.test.ts' --exclude '**/*.emulator.test.ts'",
     "test:rules": "vitest run test/firestore.rules.test.ts",
-    "test:emulator": "vitest run --no-file-parallelism test/firestore.rules.test.ts test/merchant/application-service.emulator.test.ts test/membership/membership-service.emulator.test.ts test/device/device-service.emulator.test.ts"
+    "test:emulator": "vitest run --no-file-parallelism test/firestore.rules.test.ts test/merchant/application-service.emulator.test.ts test/membership/membership-service.emulator.test.ts test/device/device-service.emulator.test.ts test/cashier/cashier-service.emulator.test.ts"
   },
   "dependencies": {
     "firebase-admin": "^14.5.0",

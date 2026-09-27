@@ -21,3 +21,11 @@ export {
   getDeviceBootstrap,
   revokePosDevice,
 } from './device/device-functions';
+export {
+  changeCashierPin,
+  createCashier,
+  refreshCashierCredentialBundle,
+  resetCashierPin,
+  setCashierStatus,
+  verifyCashierPin,
+} from './cashier/cashier-functions';

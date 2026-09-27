@@ -54,5 +54,9 @@ Both projects currently have no billing account. Firebase Storage default
 buckets require Blaze, and Cloud Functions deployment also requires Blaze.
 After linking billing and setting budget alerts, provision each Storage bucket
 in `asia-southeast1`, then deploy the tested Storage rules and Functions to
-each project. Creating a bucket or deploying Functions before the security
-rules and server flows are ready is not part of the current bootstrap.
+each project. Before deploying cashier Functions, create a different random
+pepper for each project with `firebase functions:secrets:set CASHIER_PIN_PEPPER
+--project dev` and the corresponding `--project prod` command. Enter the
+value at the CLI prompt; never place it in the repository, shell history, or
+Flutter configuration. The callable Functions bind this secret only where PIN
+hashing or verification needs it.

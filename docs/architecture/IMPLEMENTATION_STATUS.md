@@ -27,6 +27,9 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
   Manager access changes/removal, and Flutter membership and branch gateways.
 - POS device activation, custom-token identity, branch-scoped revocation, and
   protected bootstrap, with separate human and device Firebase Auth sessions.
+- Server-side cashier creation, suspension, PIN verification/change/reset,
+  five-failure lockout, and seven-day credential bundle metadata. PIN hashes
+  use scrypt and a Secret Manager pepper; the verifier never reaches clients.
 - Firestore rules and indexes for personal merchant discovery and active branch
   queries deployed to both Firebase projects.
 - Tenant and auth records, branch-scoped Owner/Manager policy, and an offline
@@ -38,8 +41,8 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
 
 - Cloud Functions deployment, Admin pre-authorization of an existing signed-in
   user, and application login screens.
-- Deployment of merchant approval, membership, and device Cloud Functions, plus
-  protected cashier functions with Firestore rules and emulator tests.
+- Cloud Functions deployment and Secret Manager pepper provisioning after
+  billing is linked to the Firebase projects.
 - Secure device-local credential storage, online enrollment, offline login
   retry controls, and POS/Admin authentication screens.
 

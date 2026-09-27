@@ -15,6 +15,14 @@
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "merchantId", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "cashiers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assignedBranchIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
