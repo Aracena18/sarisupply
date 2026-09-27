@@ -10,11 +10,11 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
 
 - Flutter POS, Driver, and Admin foundation apps with shared packages and
   Android `dev`/`prod` flavors.
-- Firebase package scaffolding and deny-all Firestore and Storage rules.
+- Firebase package scaffolding and restrictive Firestore and Storage rules.
 - Separate Firebase Development and Production projects, three registered apps
   in each project, generated FlutterFire configurations, and Google Sign-In.
 - Default Firestore databases in `asia-southeast1` with delete protection and
-  deployed deny-all rules in both projects.
+  deployed authorization rules in both projects.
 - Development Android debug SHA-1 and SHA-256 fingerprints registered for POS
   and Driver.
 - Environment-selected Firebase initialization in all apps, Google human Auth
@@ -36,15 +36,16 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
   credential age/version/clock policy.
 - POS local PIN derivation using PBKDF2-HMAC-SHA256 with 210,000 iterations,
   a 16-byte random salt, and a 32-byte verifier.
+- Keystore-backed POS credential storage, online enrollment after permanent
+  PIN verification, seven-day offline login checks, and local retry cooldowns.
 
 ## Still needed for the authentication milestone
 
-- Cloud Functions deployment, Admin pre-authorization of an existing signed-in
-  user, and application login screens.
 - Cloud Functions deployment and Secret Manager pepper provisioning after
   billing is linked to the Firebase projects.
-- Secure device-local credential storage, online enrollment, offline login
-  retry controls, and POS/Admin authentication screens.
+- Admin pre-authorization of an existing signed-in user, POS/Admin login
+  screens, and end-to-end device activation and cashier enrollment UI.
+- Upload of queued offline PIN failure events after connectivity returns.
 
 The POS, Driver, and Admin applications still show foundation screens. Sales,
 inventory, warehouse, delivery, and reporting are later milestones.

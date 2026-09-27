@@ -589,7 +589,7 @@ packages:
     source: path
     version: "0.1.0"
   sarisupply_models:
-    dependency: "direct overridden"
+    dependency: "direct main"
     description:
       path: "../../packages/sarisupply_models"
       relative: true

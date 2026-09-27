@@ -22,6 +22,8 @@ dependencies:
     path: ../../packages/sarisupply_design_system
   sarisupply_firebase:
     path: ../../packages/sarisupply_firebase
+  sarisupply_models:
+    path: ../../packages/sarisupply_models
 
 dev_dependencies:
   flutter_test:
