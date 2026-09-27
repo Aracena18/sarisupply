@@ -19,6 +19,8 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
   and Driver.
 - Environment-selected Firebase initialization in all apps, Google human Auth
   adapter, and separate named device Auth adapter.
+- Backend authorization, idempotency, audit, and trusted Admin grant helpers,
+  with tested Firestore rules deployed to both projects.
 - Tenant and auth records, branch-scoped Owner/Manager policy, and an offline
   credential age/version/clock policy.
 - POS local PIN derivation using PBKDF2-HMAC-SHA256 with 210,000 iterations,
@@ -26,7 +28,8 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
 
 ## Still needed for the authentication milestone
 
-- Admin pre-authorization and application login screens.
+- Merchant application and approval endpoints, Admin pre-authorization of an
+  existing signed-in user, and application login screens.
 - Protected merchant approval, membership, branch, device, and cashier Cloud
   Functions with Firestore rules and emulator tests.
 - Secure device-local credential storage, online enrollment, offline login

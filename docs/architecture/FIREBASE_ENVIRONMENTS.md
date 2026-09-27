@@ -35,8 +35,19 @@ The Development Auth project authorizes `localhost` for local Admin web testing.
 The Production project does not authorize `localhost`.
 
 The Firestore databases are Standard edition, have delete protection enabled,
-and use the repository's deny-all security rules. Do not open client access
-until the tenant authorization rules and their emulator tests are complete.
+and use the repository's tested security rules. Rules allow only narrow reads
+for a user's own profile, active membership, authorized branches, own merchant
+applications, and active Admin record. Clients cannot write authorization,
+credential, or audit documents. Run `npm run test:rules` in `firebase/functions`
+through the Firestore emulator before changing rules.
+
+The trusted Admin grant script requires an existing Firebase Auth user and
+Google Application Default Credentials with access to the target project. From
+`firebase/functions`, run `npm run build`, then
+`npm run grant-admin -- --project sarisupply-dev-aracena18 --email <email>`
+(or `--uid <uid>`). Repeat explicitly for Production when appropriate. It
+writes an active `platformAdmins/{uid}` record and sets the small
+`sarisupplyAdmin` custom claim. It is never exposed as a client callable.
 
 Both projects currently have no billing account. Firebase Storage default
 buckets require Blaze, and Cloud Functions deployment also requires Blaze.
