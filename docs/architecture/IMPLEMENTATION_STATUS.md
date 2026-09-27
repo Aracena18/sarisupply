@@ -40,6 +40,9 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
   PIN verification, seven-day offline login checks, and local retry cooldowns.
 - POS sign-in, merchant application, device activation, cashier login, and
   temporary PIN change screens, plus Admin sign-in and application review UI.
+- Local Auth, Firestore, and Functions emulator acceptance coverage for
+  application approval, Manager branch scoping, device revocation, and
+  idempotent retries; one command verifies backend and Flutter DEV builds.
 
 ## Still needed for the authentication milestone
 
