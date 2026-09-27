@@ -37,7 +37,8 @@ The Production project does not authorize `localhost`.
 The Firestore databases are Standard edition, have delete protection enabled,
 and use the repository's tested security rules. Rules allow only narrow reads
 for a user's own profile, active membership, authorized branches, own merchant
-applications, and active Admin record. Clients cannot write authorization,
+applications, and active Admin record. An active pre-authorized Admin can read
+applications for review. Clients cannot write authorization,
 credential, or audit documents. Run `npm run test:rules` in `firebase/functions`
 through the Firestore emulator before changing rules.
 

@@ -35,6 +35,13 @@ service cloud.firestore {
           branchId in membership(merchantId).branchIds);
     }
 
+    function isActivePlatformAdmin() {
+      return isHuman() &&
+        request.auth.token.get('sarisupplyAdmin', false) == true &&
+        exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/platformAdmins/$(request.auth.uid)).data.status == 'active';
+    }
+
     match /users/{uid} {
       allow get: if isHuman() && request.auth.uid == uid;
       allow list, write: if false;
@@ -48,14 +55,15 @@ service cloud.firestore {
 
     match /platformAdmins/{uid} {
       allow get: if isHuman() && request.auth.uid == uid &&
-        request.auth.token.sarisupplyAdmin == true &&
+        request.auth.token.get('sarisupplyAdmin', false) == true &&
         resource.data.status == 'active';
       allow list, write: if false;
     }
 
     match /merchantApplications/{applicationId} {
       allow get, list: if isHuman() &&
-        resource.data.applicantUid == request.auth.uid;
+        (resource.data.applicantUid == request.auth.uid ||
+          isActivePlatformAdmin());
       allow write: if false;
     }
 

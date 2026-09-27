@@ -45,6 +45,9 @@ beforeEach(async () => {
       merchantId: 'merchant-1', status: 'active',
     });
     await setDoc(doc(db, 'platformAdmins/admin-1'), { uid: 'admin-1', status: 'active' });
+    await setDoc(doc(db, 'merchantApplications/application-1'), {
+      applicantUid: 'owner-1', status: 'pending_review',
+    });
     await setDoc(doc(db, 'merchants/merchant-1/cashierCredentials/cashier-1'), {
       verifier: 'private',
     });
@@ -93,6 +96,17 @@ describe('Firestore authorization rules', () => {
       sarisupplyAdmin: true,
     }).firestore();
     await assertSucceeds(getDoc(doc(db, 'platformAdmins/admin-1')));
+  });
+
+  it('lets an active Admin review applications from other users', async () => {
+    const admin = environment.authenticatedContext('admin-1', {
+      sarisupplyAdmin: true,
+    }).firestore();
+    const unapproved = environment.authenticatedContext('other-1', {
+      sarisupplyAdmin: true,
+    }).firestore();
+    await assertSucceeds(getDoc(doc(admin, 'merchantApplications/application-1')));
+    await assertFails(getDoc(doc(unapproved, 'merchantApplications/application-1')));
   });
 
   it('does not trust an admin claim without a current active admin record', async () => {

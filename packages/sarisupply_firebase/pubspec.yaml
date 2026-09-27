@@ -16,6 +16,8 @@ dependencies:
   google_sign_in: ^7.2.0
   sarisupply_auth:
     path: ../sarisupply_auth
+  sarisupply_models:
+    path: ../sarisupply_models
 
 dev_dependencies:
   flutter_test:
