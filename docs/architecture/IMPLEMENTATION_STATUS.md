@@ -11,6 +11,12 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
 - Flutter POS, Driver, and Admin foundation apps with shared packages and
   Android `dev`/`prod` flavors.
 - Firebase package scaffolding and deny-all Firestore and Storage rules.
+- Separate Firebase Development and Production projects, three registered apps
+  in each project, generated FlutterFire configurations, and Google Sign-In.
+- Default Firestore databases in `asia-southeast1` with delete protection and
+  deployed deny-all rules in both projects.
+- Development Android debug SHA-1 and SHA-256 fingerprints registered for POS
+  and Driver.
 - Tenant and auth records, branch-scoped Owner/Manager policy, and an offline
   credential age/version/clock policy.
 - POS local PIN derivation using PBKDF2-HMAC-SHA256 with 210,000 iterations,
@@ -18,8 +24,6 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
 
 ## Still needed for the authentication milestone
 
-- Separate Development and Production Firebase projects, app registrations,
-  generated Flutter configuration, and enabled Google sign-in.
 - Human and device Firebase bootstrap, Google authentication, and Admin
   pre-authorization.
 - Protected merchant approval, membership, branch, device, and cashier Cloud
@@ -29,6 +33,11 @@ milestone in `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md
 
 The POS, Driver, and Admin applications still show foundation screens. Sales,
 inventory, warehouse, delivery, and reporting are later milestones.
+
+Both new projects are currently on the no-cost Spark plan. Cloud Storage
+bucket creation and Cloud Functions deployment require a linked billing account
+and the Blaze plan. Production Android release signing and its certificate
+fingerprints must be configured before a production release.
 
 ## Verification
 

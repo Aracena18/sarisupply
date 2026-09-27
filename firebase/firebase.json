@@ -1,4 +1,12 @@
 {
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "SariSupply",
+        "supportEmail": "r.aracena.545985@umindanao.edu.ph"
+      }
+    }
+  },
   "functions": [
     {
       "source": "functions",

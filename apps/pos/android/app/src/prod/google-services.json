@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "110781011916",
+    "project_id": "sarisupply-prod-aracena18",
+    "storage_bucket": "sarisupply-prod-aracena18.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:110781011916:android:7209f0d6375487552bef69",
+        "android_client_info": {
+          "package_name": "com.sarisupply.sarisupply_driver"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "110781011916-88507t6k0glkskp51460qa6bcm6oti8b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDd2Q71EaiHwOb5KRKLIoFJZfV-6615Xks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "110781011916-88507t6k0glkskp51460qa6bcm6oti8b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:110781011916:android:777cd24a1af275062bef69",
+        "android_client_info": {
+          "package_name": "com.sarisupply.sarisupply_pos"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "110781011916-88507t6k0glkskp51460qa6bcm6oti8b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDd2Q71EaiHwOb5KRKLIoFJZfV-6615Xks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "110781011916-88507t6k0glkskp51460qa6bcm6oti8b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
