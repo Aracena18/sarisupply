@@ -11,7 +11,9 @@ required_files=(
   "docs/engineering/AGENT_WORKFLOW.md"
   "docs/engineering/DEFINITION_OF_DONE.md"
   "docs/engineering/ARCHITECTURE_BOUNDARIES.md"
+  "docs/engineering/TOOLCHAIN.md"
   "tool/check_architecture.dart"
+  "tool/check_toolchain.sh"
 )
 
 echo "==> Harness structure"
@@ -23,8 +25,8 @@ for path in "${required_files[@]}"; do
 done
 echo "Harness structure PASS"
 
-command -v dart >/dev/null || { echo "dart is required" >&2; exit 1; }
-command -v flutter >/dev/null || { echo "flutter is required" >&2; exit 1; }
+echo "==> Toolchain"
+bash tool/check_toolchain.sh
 
 echo "==> Workspace bootstrap"
 dart pub get

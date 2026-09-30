@@ -6,6 +6,13 @@ const appPackages = <String, String>{
   'sarisupply_driver': 'driver',
 };
 
+const ignoredPathFragments = <String>[
+  '/.dart_tool/',
+  '/build/',
+  '/node_modules/',
+  '/.git/',
+];
+
 void main() {
   final root = Directory.current.absolute;
   final violations = <String>[];
@@ -22,6 +29,9 @@ void main() {
       }
 
       final normalizedPath = _slash(entity.absolute.path);
+      if (_isIgnored(normalizedPath)) {
+        continue;
+      }
 
       if (normalizedPath.endsWith('.dart')) {
         _checkDartFile(root, entity, normalizedPath, violations);
@@ -133,6 +143,9 @@ void _checkPubspec(
     }
   }
 }
+
+bool _isIgnored(String path) =>
+    ignoredPathFragments.any((fragment) => path.contains(fragment));
 
 String? _targetAppFromPackageUri(String uri) {
   if (!uri.startsWith('package:')) {
