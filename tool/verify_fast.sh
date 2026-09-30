@@ -14,6 +14,7 @@ required_files=(
   "docs/engineering/TOOLCHAIN.md"
   "tool/check_architecture.dart"
   "tool/check_toolchain.sh"
+  "tool/test_architecture_checker.sh"
 )
 
 echo "==> Harness structure"
@@ -27,6 +28,9 @@ echo "Harness structure PASS"
 
 echo "==> Toolchain"
 bash tool/check_toolchain.sh
+
+echo "==> Architecture checker self-test"
+bash tool/test_architecture_checker.sh
 
 echo "==> Workspace bootstrap"
 dart pub get

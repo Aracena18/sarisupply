@@ -20,6 +20,21 @@ An agent must inspect current code before assuming a plan checkbox reflects impl
 - `ARCHITECTURE_BOUNDARIES.md` — dependency and layering constraints.
 - `TESTING_STRATEGY.md` — test layers and expectations.
 - `SECURITY_GATES.md` — security checks for sensitive work.
+- `TOOLCHAIN.md` — supported deterministic Flutter/Dart/Node versions.
+- `CI.md` — CI activation and merge strategy.
+
+## Repository-owned agent skills
+
+Portable Agent Skills live under `.agents/skills/`:
+
+- `implement-feature`
+- `review-change`
+- `flutter-quality`
+- `firebase-security-review`
+- `offline-first-review`
+- `finish-task`
+
+Agents may load only the skill relevant to the current task.
 
 ## Product and architecture
 
