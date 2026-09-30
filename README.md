@@ -52,11 +52,24 @@ That command will generate:
 bash tool/verify_local.sh
 ```
 
-## Documentation
+## Engineering harness
+
+Coding agents and contributors should start with `AGENTS.md`.
+
+Engineering source of truth:
+
+- `docs/engineering/README.md`
+- `docs/engineering/CURRENT_STATE.md`
+- `docs/engineering/AGENT_WORKFLOW.md`
+- `docs/engineering/DEFINITION_OF_DONE.md`
+
+## Architecture and current milestone
 
 - `docs/architecture/SARI_SUPPLY_PRODUCTION_PLAN.md`
+- `docs/superpowers/specs/2026-09-26-firebase-identity-tenant-auth-design.md`
+- `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md`
 - `docs/superpowers/plans/2026-09-25-sarisupply-foundation.md`
 
 ## GitHub Actions
 
-Actions was tested with a minimal smoke workflow, but GitHub returned `startup_failure` before allocating a runner. The failing workflows were removed so `main` is not left permanently red. Once Actions is available for the repository/account, the same local verification commands can be moved into CI.
+Actions was tested with a minimal smoke workflow, but GitHub returned `startup_failure` before allocating a runner. The failing workflows were removed so `main` is not left permanently red. Repository verification is therefore kept in local scripts first so the same commands can later become CI gates without duplicating engineering logic.
