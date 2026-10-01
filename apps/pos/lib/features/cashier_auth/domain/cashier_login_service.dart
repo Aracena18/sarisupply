@@ -2,6 +2,7 @@ import 'package:sarisupply_auth/sarisupply_auth.dart';
 import 'package:sarisupply_models/sarisupply_models.dart';
 
 import '../data/local_pin_verifier.dart';
+import '../data/offline_clock_source.dart';
 import '../data/secure_offline_credential_store.dart';
 
 enum CashierLoginStatus {
@@ -37,15 +38,18 @@ final class CashierLoginService {
     required SecureOfflineCredentialStore store,
     required String deviceId,
     DateTime Function()? clock,
+    OfflineClockSource? offlineClock,
   })  : _cashiers = cashiers,
         _store = store,
         _deviceId = deviceId,
-        _clock = clock ?? DateTime.now;
+        _clock = clock ?? DateTime.now,
+        _offlineClock = offlineClock ?? const AndroidOfflineClockSource();
 
   final CashierRepository _cashiers;
   final SecureOfflineCredentialStore _store;
   final String _deviceId;
   final DateTime Function() _clock;
+  final OfflineClockSource _offlineClock;
 
   CashierLoginResult _signedIn(String cashierId) => CashierLoginResult(
         CashierLoginStatus.signedIn,
@@ -74,7 +78,17 @@ final class CashierLoginService {
     }
     final salt = LocalPinVerifier.generateSalt();
     final verifier = await LocalPinVerifier.derive(pin, salt);
+    final reading = await _offlineClock.read();
     final now = _clock();
+    if (reading == null) {
+      await _store.delete(_deviceId, cashierId);
+      return _signedIn(cashierId);
+    }
+    final anchor = OfflineClockAnchor(
+      wallClock: now,
+      bootCount: reading.bootCount,
+      elapsedRealtime: reading.elapsedRealtime,
+    );
     final record = StoredOfflineCredential(
       cashierId: cashierId,
       deviceId: _deviceId,
@@ -84,13 +98,17 @@ final class CashierLoginService {
       bundleIssuedAt: bundle.issuedAt,
       bundleExpiresAt: bundle.expiresAt,
       lastObservedWallClock: now,
+      clockAnchor: anchor,
       failedAttempts: 0,
       cooldownUntil: null,
     );
     final decision = OfflineCredentialPolicy.evaluate(
       _policyCredential(record),
-      now,
-      now,
+      OfflineTimeEvidence(
+          now: now,
+          lastObservedWallClock: now,
+          anchor: anchor,
+          reading: reading),
       verified.credentialVersion,
     );
     if (decision != OfflineCredentialDecision.allowed) {
@@ -107,10 +125,14 @@ final class CashierLoginService {
           CashierLoginStatus.requiresOnlineReenrollment);
     }
     final now = _clock();
+    final reading = await _offlineClock.read();
     final decision = OfflineCredentialPolicy.evaluate(
       _policyCredential(record),
-      now,
-      record.lastObservedWallClock,
+      OfflineTimeEvidence(
+          now: now,
+          lastObservedWallClock: record.lastObservedWallClock,
+          anchor: record.clockAnchor,
+          reading: reading),
       record.credentialVersion,
     );
     if (decision == OfflineCredentialDecision.requiresOnlineReenrollment) {
@@ -164,6 +186,15 @@ final class CashierLoginService {
   }
 
   Future<void> _applyBundle(CashierCredentialBundle bundle) async {
+    final reading = await _offlineClock.read();
+    final now = _clock();
+    final anchor = reading == null
+        ? null
+        : OfflineClockAnchor(
+            wallClock: now,
+            bootCount: reading.bootCount,
+            elapsedRealtime: reading.elapsedRealtime,
+          );
     final current = await _store.listForDevice(_deviceId);
     final projections = {
       for (final cashier in bundle.cashiers) cashier.cashierId: cashier,
@@ -180,7 +211,9 @@ final class CashierLoginService {
       await _store.save(credential.copyWith(
         bundleIssuedAt: bundle.issuedAt,
         bundleExpiresAt: bundle.expiresAt,
-        lastObservedWallClock: _clock(),
+        lastObservedWallClock: now,
+        clockAnchor: anchor,
+        clearClockAnchor: anchor == null,
       ));
     }
   }

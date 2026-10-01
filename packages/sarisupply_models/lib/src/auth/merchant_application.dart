@@ -1,4 +1,5 @@
 import 'auth_enums.dart';
+import 'deep_freeze.dart';
 
 final class MerchantApplication {
   MerchantApplication({
@@ -12,8 +13,8 @@ final class MerchantApplication {
     required this.reviewedBy,
     required this.reviewNotes,
     required this.approvedMerchantId,
-  })  : businessProfile = Map.unmodifiable(businessProfile),
-        firstBranchDraft = Map.unmodifiable(firstBranchDraft);
+  })  : businessProfile = deepFreezeStringMap(businessProfile),
+        firstBranchDraft = deepFreezeStringMap(firstBranchDraft);
 
   factory MerchantApplication.fromMap(Map<String, Object?> map) =>
       MerchantApplication(

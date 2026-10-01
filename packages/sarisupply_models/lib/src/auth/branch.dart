@@ -1,4 +1,5 @@
 import 'auth_enums.dart';
+import 'deep_freeze.dart';
 
 final class Branch {
   Branch({
@@ -13,8 +14,8 @@ final class Branch {
     required this.createdAt,
     required this.createdBy,
     required this.updatedAt,
-  })  : contactDetails = Map.unmodifiable(contactDetails),
-        operatingHours = Map.unmodifiable(operatingHours);
+  })  : contactDetails = deepFreezeStringMap(contactDetails),
+        operatingHours = deepFreezeStringMap(operatingHours);
 
   factory Branch.fromMap(Map<String, Object?> map) => Branch(
         id: map['id'] as String,

@@ -77,6 +77,69 @@ void main() {
     expect(Branch.fromMap(branch.toMap()).contactDetails['phone'], '123');
   });
 
+  test('application copies and freezes nested map, list, and set input', () {
+    final tags = <String>{'retail'};
+    final contacts = <Object?>[
+      <String, String>{'phone': '123'},
+      tags
+    ];
+    final profile = <String, Object?>{'contacts': contacts};
+    final hours = <Object?>[
+      <String, String>{'open': '08:00'}
+    ];
+    final application = MerchantApplication(
+        id: 'application-1',
+        applicantUid: 'user-1',
+        status: MerchantApplicationStatus.draft,
+        businessProfile: profile,
+        firstBranchDraft: {'hours': hours},
+        submittedAt: null,
+        reviewedAt: null,
+        reviewedBy: null,
+        reviewNotes: null,
+        approvedMerchantId: null);
+    (contacts[0] as Map<String, String>)['phone'] = '999';
+    tags.add('wholesale');
+    contacts.add('new');
+    (hours[0] as Map<String, String>)['open'] = '10:00';
+    final stored = application.businessProfile['contacts'] as List;
+    expect((stored[0] as Map)['phone'], '123');
+    expect(stored[1], {'retail'});
+    expect(stored, hasLength(2));
+    expect(((application.firstBranchDraft['hours'] as List)[0] as Map)['open'],
+        '08:00');
+    expect(() => (stored[0] as Map)['phone'] = '456', throwsUnsupportedError);
+    expect(() => (stored[1] as Set).add('new'), throwsUnsupportedError);
+  });
+
+  test('branch copies and freezes nested collection input', () {
+    final phones = <Object?>[
+      <String, String>{'number': '123'}
+    ];
+    final hours = <String, Object?>{
+      'monday': <Object?>['08:00']
+    };
+    final branch = Branch(
+        id: 'branch-a',
+        merchantId: 'merchant-1',
+        name: 'Main',
+        code: 'MAIN',
+        address: 'Manila',
+        contactDetails: {'phones': phones},
+        operatingHours: hours,
+        status: BranchStatus.active,
+        createdAt: createdAt,
+        createdBy: 'owner-1',
+        updatedAt: createdAt);
+    (phones[0] as Map<String, String>)['number'] = '999';
+    (hours['monday'] as List).add('20:00');
+    expect(
+        ((branch.contactDetails['phones'] as List)[0] as Map)['number'], '123');
+    expect(branch.operatingHours['monday'], ['08:00']);
+    expect(() => (branch.operatingHours['monday'] as List).add('22:00'),
+        throwsUnsupportedError);
+  });
+
   test('cashier profile excludes PIN material and keeps assignments', () {
     final cashier = Cashier(
       id: 'cashier-1',

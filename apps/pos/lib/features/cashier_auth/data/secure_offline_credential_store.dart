@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:sarisupply_auth/sarisupply_auth.dart';
 
 abstract interface class SecureKeyValueStore {
   Future<String?> read(String key);
@@ -36,6 +37,7 @@ final class StoredOfflineCredential {
     required this.bundleIssuedAt,
     required this.bundleExpiresAt,
     required this.lastObservedWallClock,
+    required this.clockAnchor,
     required this.failedAttempts,
     required this.cooldownUntil,
   });
@@ -48,6 +50,7 @@ final class StoredOfflineCredential {
   final DateTime bundleIssuedAt;
   final DateTime bundleExpiresAt;
   final DateTime lastObservedWallClock;
+  final OfflineClockAnchor? clockAnchor;
   final int failedAttempts;
   final DateTime? cooldownUntil;
 
@@ -55,6 +58,8 @@ final class StoredOfflineCredential {
     DateTime? bundleIssuedAt,
     DateTime? bundleExpiresAt,
     DateTime? lastObservedWallClock,
+    OfflineClockAnchor? clockAnchor,
+    bool clearClockAnchor = false,
     int? failedAttempts,
     DateTime? cooldownUntil,
     bool clearCooldown = false,
@@ -69,6 +74,7 @@ final class StoredOfflineCredential {
         bundleExpiresAt: bundleExpiresAt ?? this.bundleExpiresAt,
         lastObservedWallClock:
             lastObservedWallClock ?? this.lastObservedWallClock,
+        clockAnchor: clearClockAnchor ? null : clockAnchor ?? this.clockAnchor,
         failedAttempts: failedAttempts ?? this.failedAttempts,
         cooldownUntil:
             clearCooldown ? null : cooldownUntil ?? this.cooldownUntil,
@@ -83,6 +89,14 @@ final class StoredOfflineCredential {
         'bundleIssuedAt': bundleIssuedAt.toIso8601String(),
         'bundleExpiresAt': bundleExpiresAt.toIso8601String(),
         'lastObservedWallClock': lastObservedWallClock.toIso8601String(),
+        'clockAnchor': clockAnchor == null
+            ? null
+            : {
+                'wallClock': clockAnchor!.wallClock.toIso8601String(),
+                'bootCount': clockAnchor!.bootCount,
+                'elapsedRealtimeMs':
+                    clockAnchor!.elapsedRealtime.inMilliseconds,
+              },
         'failedAttempts': failedAttempts,
         'cooldownUntil': cooldownUntil?.toIso8601String(),
       };
@@ -98,11 +112,28 @@ final class StoredOfflineCredential {
         bundleExpiresAt: DateTime.parse(map['bundleExpiresAt'] as String),
         lastObservedWallClock:
             DateTime.parse(map['lastObservedWallClock'] as String),
+        clockAnchor: map['clockAnchor'] == null
+            ? null
+            : _anchorFromMap(
+                Map<String, dynamic>.from(map['clockAnchor'] as Map)),
         failedAttempts: map['failedAttempts'] as int,
         cooldownUntil: map['cooldownUntil'] == null
             ? null
             : DateTime.parse(map['cooldownUntil'] as String),
       );
+
+  static OfflineClockAnchor _anchorFromMap(Map<String, dynamic> map) {
+    final bootCount = map['bootCount'] as int;
+    final elapsedMs = map['elapsedRealtimeMs'] as int;
+    if (bootCount < 0 || elapsedMs < 0) {
+      throw const FormatException('Invalid offline clock anchor');
+    }
+    return OfflineClockAnchor(
+      wallClock: DateTime.parse(map['wallClock'] as String),
+      bootCount: bootCount,
+      elapsedRealtime: Duration(milliseconds: elapsedMs),
+    );
+  }
 }
 
 final class SecureOfflineCredentialStore {

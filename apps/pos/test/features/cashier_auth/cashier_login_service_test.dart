@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
 
 import 'package:sarisupply_pos/features/cashier_auth/data/secure_offline_credential_store.dart';
+import 'package:sarisupply_pos/features/cashier_auth/data/offline_clock_source.dart';
 import 'package:sarisupply_pos/features/cashier_auth/domain/cashier_login_service.dart';
 
 class _MemoryKeys implements SecureKeyValueStore {
@@ -58,23 +59,37 @@ class _Cashiers extends Fake implements CashierRepository {
       );
 }
 
+class _ClockSource implements OfflineClockSource {
+  int bootCount = 7;
+  Duration uptime = const Duration(hours: 2);
+  bool available = true;
+
+  @override
+  Future<OfflineClockReading?> read() async => available
+      ? OfflineClockReading(bootCount: bootCount, elapsedRealtime: uptime)
+      : null;
+}
+
 void main() {
   late _MemoryKeys keys;
   late SecureOfflineCredentialStore store;
   late _Cashiers server;
   late DateTime now;
   late CashierLoginService service;
+  late _ClockSource clockSource;
 
   setUp(() {
     keys = _MemoryKeys();
     store = SecureOfflineCredentialStore(keys);
     server = _Cashiers();
     now = DateTime.utc(2026, 9, 27, 12);
+    clockSource = _ClockSource();
     service = CashierLoginService(
       cashiers: server,
       store: store,
       deviceId: 'device-1',
       clock: () => now,
+      offlineClock: clockSource,
     );
   });
 
@@ -120,6 +135,43 @@ void main() {
     await service.refreshEnrollment();
     expect((await service.loginOffline('cashier-1', '123456')).status,
         CashierLoginStatus.requiresOnlineReenrollment);
+  });
+
+  test('offline login denies seven elapsed days even when wall time is frozen',
+      () async {
+    await service.loginOnline('cashier-1', '123456');
+    clockSource.uptime += const Duration(days: 7);
+    expect((await service.loginOffline('cashier-1', '123456')).status,
+        CashierLoginStatus.requiresOnlineRefresh);
+  });
+
+  test('offline login denies reboot until an online bundle reanchors it',
+      () async {
+    await service.loginOnline('cashier-1', '123456');
+    clockSource.bootCount++;
+    clockSource.uptime = const Duration(minutes: 1);
+    expect((await service.loginOffline('cashier-1', '123456')).status,
+        CashierLoginStatus.requiresOnlineRefresh);
+    await service.refreshEnrollment();
+    expect((await service.loginOffline('cashier-1', '123456')).status,
+        CashierLoginStatus.signedIn);
+  });
+
+  test('missing platform clock fails closed for offline login', () async {
+    await service.loginOnline('cashier-1', '123456');
+    clockSource.available = false;
+    expect((await service.loginOffline('cashier-1', '123456')).status,
+        CashierLoginStatus.requiresOnlineRefresh);
+  });
+
+  test('pre-anchor stored credential requires an online refresh', () async {
+    await service.loginOnline('cashier-1', '123456');
+    final key = 'offline-credential:device-1:cashier-1';
+    final legacy = jsonDecode(keys.values[key]!) as Map<String, dynamic>;
+    legacy.remove('clockAnchor');
+    keys.values[key] = jsonEncode(legacy);
+    expect((await service.loginOffline('cashier-1', '123456')).status,
+        CashierLoginStatus.requiresOnlineRefresh);
   });
 
   test('clearing a device removes its local verifier and queued events',
