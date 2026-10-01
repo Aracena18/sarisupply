@@ -4,6 +4,9 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+echo "==> Supported toolchain"
+bash tool/check_toolchain.sh
+
 echo "==> Flutter toolchain"
 flutter --version
 dart --version
