@@ -65,12 +65,12 @@ if [[ "$backend_tests" != "0" ]]; then
   test_paths+=("../tests")
 fi
 
-test_command="cd functions && npx vitest run ${test_paths[*]}"
+test_command="cd functions && npx vitest run --no-file-parallelism ${test_paths[*]}"
 
 echo "==> Firebase emulator tests"
 cd "$firebase_root"
 firebase emulators:exec \
-  --project demo-sarisupply \
+  --project demo-sarisupply-rules \
   --only auth,firestore,functions,storage \
   "$test_command"
 
