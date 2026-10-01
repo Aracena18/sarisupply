@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "dev": "sarisupply-dev-aracena18",
+    "prod": "sarisupply-prod-aracena18"
+  }
+}

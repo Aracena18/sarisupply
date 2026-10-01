@@ -31,3 +31,17 @@ The roadmap includes multi-device and multi-branch POS, cashier PIN switching, p
 The repository is a Melos-managed Flutter/Dart monorepo using Riverpod and feature-first architecture. Shared code lives in focused packages. Applications never import one another directly.
 
 Implementation proceeds vertically: foundation, identity/tenant/device setup, offline POS and synchronization, then warehouse, fulfillment, delivery, and reporting.
+
+## Identity milestone verification
+
+`bash tool/verify_local.sh` checks the Flutter workspace and builds the
+Development Admin web app and Android POS and Driver APKs. Add `--firebase` to
+also run the backend TypeScript build, unit tests, Firestore rules tests, and
+identity acceptance tests against a local demo project. The backend checks can
+also be run alone with `bash tool/verify_firebase.sh`.
+
+Before live Development acceptance testing, Cloud Functions must be deployed,
+the cashier PIN pepper must be provisioned in Secret Manager, and an existing
+Firebase Auth user must be granted the SariSupply Admin role. These steps
+require the Development project to have billing enabled. Production deployment
+needs its own release approval and verification.

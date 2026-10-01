@@ -1,0 +1,109 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isHuman() {
+      return request.auth != null &&
+        request.auth.token.get('principalType', 'human') != 'device';
+    }
+
+    function isActiveMerchant(merchantId) {
+      return exists(/databases/$(database)/documents/merchants/$(merchantId)) &&
+        get(/databases/$(database)/documents/merchants/$(merchantId)).data.status == 'active';
+    }
+
+    function membership(merchantId) {
+      return get(
+        /databases/$(database)/documents/merchants/$(merchantId)/memberships/$(request.auth.uid)
+      ).data;
+    }
+
+    function hasActiveMembership(merchantId) {
+      return isHuman() && isActiveMerchant(merchantId) &&
+        exists(
+          /databases/$(database)/documents/merchants/$(merchantId)/memberships/$(request.auth.uid)
+        ) &&
+        membership(merchantId).status == 'active' &&
+        membership(merchantId).userId == request.auth.uid &&
+        membership(merchantId).merchantId == merchantId;
+    }
+
+    function canReadBranch(merchantId, branchId) {
+      return hasActiveMembership(merchantId) &&
+        (membership(merchantId).role == 'owner' ||
+          membership(merchantId).allBranches == true ||
+          branchId in membership(merchantId).branchIds);
+    }
+
+    function isActivePlatformAdmin() {
+      return isHuman() &&
+        request.auth.token.get('sarisupplyAdmin', false) == true &&
+        exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/platformAdmins/$(request.auth.uid)).data.status == 'active';
+    }
+
+    match /users/{uid} {
+      allow get: if isHuman() && request.auth.uid == uid;
+      allow list, write: if false;
+
+      match /merchantRefs/{merchantId} {
+        allow get: if isHuman() && request.auth.uid == uid &&
+          hasActiveMembership(merchantId);
+        allow list: if isHuman() && request.auth.uid == uid;
+        allow write: if false;
+      }
+    }
+
+    match /platformAdmins/{uid} {
+      allow get: if isHuman() && request.auth.uid == uid &&
+        request.auth.token.get('sarisupplyAdmin', false) == true &&
+        resource.data.status == 'active';
+      allow list, write: if false;
+    }
+
+    match /merchantApplications/{applicationId} {
+      allow get, list: if isHuman() &&
+        (resource.data.applicantUid == request.auth.uid ||
+          isActivePlatformAdmin());
+      allow write: if false;
+    }
+
+    match /merchants/{merchantId} {
+      allow get: if hasActiveMembership(merchantId);
+      allow list, write: if false;
+
+      match /memberships/{uid} {
+        allow get: if isHuman() && request.auth.uid == uid &&
+          hasActiveMembership(merchantId);
+        allow list, write: if false;
+      }
+
+      match /branches/{branchId} {
+        allow get, list: if canReadBranch(merchantId, branchId) &&
+          resource.data.status == 'active' &&
+          resource.data.merchantId == merchantId;
+        allow write: if false;
+      }
+
+      match /cashierCredentials/{cashierId} {
+        allow read, write: if false;
+      }
+
+      match /devices/{deviceId} {
+        allow read, write: if false;
+      }
+
+      match /auditEvents/{eventId} {
+        allow read, write: if false;
+      }
+
+      match /{other=**} {
+        allow read, write: if false;
+      }
+    }
+
+    match /{other=**} {
+      allow read, write: if false;
+    }
+  }
+}

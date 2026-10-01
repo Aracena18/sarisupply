@@ -1,0 +1,25 @@
+{
+  "name": "sarisupply-functions",
+  "private": true,
+  "main": "lib/index.js",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "build": "tsc",
+    "grant-admin": "node lib/admin/grant-admin.js",
+    "test": "vitest run --exclude '**/*.rules.test.ts' --exclude '**/*.emulator.test.ts' --exclude '**/*.acceptance.test.ts'",
+    "test:rules": "vitest run test/firestore.rules.test.ts",
+    "test:emulator": "vitest run --no-file-parallelism test/firestore.rules.test.ts test/merchant/application-service.emulator.test.ts test/membership/membership-service.emulator.test.ts test/device/device-service.emulator.test.ts test/cashier/cashier-service.emulator.test.ts test/identity-tenant.acceptance.test.ts"
+  },
+  "dependencies": {
+    "firebase-admin": "^14.5.0",
+    "firebase-functions": "^7.4.0"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@types/node": "^22.20.4",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "managerInvites",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "email", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "branches",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "merchantId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cashiers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "assignedBranchIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
