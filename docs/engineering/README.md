@@ -20,6 +20,7 @@ An agent must inspect current code before assuming a plan checkbox reflects impl
 - `ARCHITECTURE_BOUNDARIES.md` — dependency and layering constraints.
 - `TESTING_STRATEGY.md` — test layers and expectations.
 - `SECURITY_GATES.md` — security checks for sensitive work.
+- `FIREBASE_FUNCTIONS_DEPENDENCY_TRIAGE.md` — current npm advisory assessment and dispositions.
 - `TOOLCHAIN.md` — supported deterministic Flutter/Dart/Node versions.
 - `CI.md` — CI activation and merge strategy.
 
