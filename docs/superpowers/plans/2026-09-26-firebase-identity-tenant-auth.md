@@ -10,6 +10,10 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-26-firebase-identity-tenant-auth-design.md`
 
+## Milestone status — 2026-10-02
+
+Tasks 1–11 implementation and automated verification are complete on `main` and were merged in PR #2. The checkboxes below reflect the merged code and passing tests. Task 8 Step 7 remains open until the real DEV cashier PIN pepper is provisioned in Secret Manager. Task 11 Step 6 remains open until the manual DEV device-activation and cashier-enrollment smoke test is completed. Emulator coverage and successful builds do not complete those live operational steps.
+
 ## Global Constraints
 
 - User-facing clients remain Flutter: POS Android/tablet, Driver Android, Admin Flutter Web.
@@ -136,7 +140,7 @@ Driver:
 - Produces: Android POS IDs `com.sarisupply.sarisupply_pos.dev` and `com.sarisupply.sarisupply_pos`.
 - Produces: Android Driver IDs `com.sarisupply.sarisupply_driver.dev` and `com.sarisupply.sarisupply_driver`.
 
-- [ ] **Step 1: Write the environment parser test**
+- [x] **Step 1: Write the environment parser test**
 
 ```dart
 test('accepts only dev and prod', () {
@@ -146,7 +150,7 @@ test('accepts only dev and prod', () {
 });
 ```
 
-- [ ] **Step 2: Run the test and confirm it fails because the package/parser does not exist**
+- [x] **Step 2: Run the test and confirm it fails because the package/parser does not exist**
 
 Run:
 
@@ -157,11 +161,11 @@ flutter test test/sarisupply_environment_test.dart
 
 Expected: FAIL before implementation.
 
-- [ ] **Step 3: Scaffold `sarisupply_auth` and `sarisupply_firebase`, then implement the environment parser**
+- [x] **Step 3: Scaffold `sarisupply_auth` and `sarisupply_firebase`, then implement the environment parser**
 
 Add the packages to the existing Melos glob without changing the monorepo pattern. Keep each package independently analyzable.
 
-- [ ] **Step 4: Add Flutter dependencies using the package manager instead of hand-pinning stale versions**
+- [x] **Step 4: Add Flutter dependencies using the package manager instead of hand-pinning stale versions**
 
 Run in the relevant packages/apps:
 
@@ -182,11 +186,11 @@ cd ../driver
 flutter pub add sarisupply_firebase --path ../../packages/sarisupply_firebase
 ```
 
-- [ ] **Step 5: Configure Android build flavors**
+- [x] **Step 5: Configure Android build flavors**
 
 In POS and Driver Gradle files, create the `dev` and `prod` product flavors under one `environment` flavor dimension. Production keeps the existing application ID; development appends `.dev`. Give development apps an app-name suffix `Dev`.
 
-- [ ] **Step 6: Create/select the two Firebase projects and register app variants**
+- [x] **Step 6: Create/select the two Firebase projects and register app variants**
 
 Use Firebase CLI login under the user's Google account. Record the real project IDs only in the alias map:
 
@@ -208,7 +212,7 @@ Admin Web
 
 Enable Google as an Auth provider in both projects.
 
-- [ ] **Step 7: Generate per-app Firebase Dart configuration**
+- [x] **Step 7: Generate per-app Firebase Dart configuration**
 
 Generate committed configuration files with these exact names:
 
@@ -223,11 +227,11 @@ apps/admin/lib/firebase_config_prod.dart
 
 Do not store backend secrets in these files. Do not commit service-account credentials.
 
-- [ ] **Step 8: Initialize the Firebase backend workspace**
+- [x] **Step 8: Initialize the Firebase backend workspace**
 
 Set Functions runtime to Node.js 22 and TypeScript. Configure Firestore rules/indexes and Storage rules from the files under `firebase/`. Start with deny-all rules until Tasks 4–8 deliberately open read paths.
 
-- [ ] **Step 9: Verify environment scaffolding**
+- [x] **Step 9: Verify environment scaffolding**
 
 Run:
 
@@ -239,7 +243,7 @@ cd firebase/functions && npm install && npm run build
 
 Expected: all commands exit 0.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add packages/sarisupply_auth packages/sarisupply_firebase firebase apps/pos apps/admin apps/driver melos.yaml .gitignore
@@ -273,7 +277,7 @@ git commit -m "feat: scaffold Firebase environments and auth packages"
 - Produces: `BranchAccessPolicy.canManageManagers(MerchantMembership membership) -> bool`
 - Produces: `BranchAccessPolicy.canCreateOrDeactivateBranch(MerchantMembership membership) -> bool`
 
-- [ ] **Step 1: Write failing policy tests**
+- [x] **Step 1: Write failing policy tests**
 
 Cover these exact cases:
 
@@ -288,7 +292,7 @@ Manager -> create/deactivate branch denied
 Owner -> create/deactivate branch allowed
 ```
 
-- [ ] **Step 2: Run tests and confirm they fail**
+- [x] **Step 2: Run tests and confirm they fail**
 
 Run:
 
@@ -299,15 +303,15 @@ flutter test test/branch_access_policy_test.dart
 
 Expected: FAIL because models/policy are not implemented.
 
-- [ ] **Step 3: Implement explicit immutable models and enum wire values**
+- [x] **Step 3: Implement explicit immutable models and enum wire values**
 
 Use explicit `toMap()/fromMap()` methods. Do not add code-generation dependencies in this milestone.
 
-- [ ] **Step 4: Implement `BranchAccessPolicy`**
+- [x] **Step 4: Implement `BranchAccessPolicy`**
 
 Policy must reject non-active memberships before checking role or branch scope.
 
-- [ ] **Step 5: Run package tests**
+- [x] **Step 5: Run package tests**
 
 ```bash
 cd packages/sarisupply_models && flutter test
@@ -316,7 +320,7 @@ cd ../sarisupply_auth && flutter test
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/sarisupply_models packages/sarisupply_auth
@@ -348,23 +352,23 @@ git commit -m "feat: add tenant models and branch authorization policies"
 - Produces: `FirebaseDeviceAuthRepository.signInWithCustomToken(String token) -> Future<String>` returning Firebase device UID.
 - Consumes: `SariSupplyEnvironment` from Task 1.
 
-- [ ] **Step 1: Write contract tests for environment-specific Firebase option selection**
+- [x] **Step 1: Write contract tests for environment-specific Firebase option selection**
 
 Test that POS/Admin/Driver bootstraps select DEV options for `dev` and PROD options for `prod`, and reject any unsupported environment before `runApp`.
 
-- [ ] **Step 2: Run tests and confirm they fail**
+- [x] **Step 2: Run tests and confirm they fail**
 
 Run the package/app bootstrap tests individually.
 
-- [ ] **Step 3: Implement default human Firebase initialization**
+- [x] **Step 3: Implement default human Firebase initialization**
 
 Initialize the default Firebase app exactly once using the selected generated `FirebaseOptions`.
 
-- [ ] **Step 4: Implement named device Firebase initialization**
+- [x] **Step 4: Implement named device Firebase initialization**
 
 Create/reuse a named Firebase app `sarisupply-device` with the same selected environment options. Never sign the device principal into the default human Auth instance.
 
-- [ ] **Step 5: Implement Google Sign-In**
+- [x] **Step 5: Implement Google Sign-In**
 
 On Android use `google_sign_in` to obtain a Google ID token, then exchange it with Firebase Auth. Initialize Google Sign-In with the environment-specific public web OAuth server client ID supplied through `--dart-define=GOOGLE_SERVER_CLIENT_ID=...`.
 
@@ -372,7 +376,7 @@ On Flutter Web use `FirebaseAuth.signInWithPopup(GoogleAuthProvider())`.
 
 Normalize both into `AuthUser`.
 
-- [ ] **Step 6: Update each app bootstrap**
+- [x] **Step 6: Update each app bootstrap**
 
 Require:
 
@@ -382,7 +386,7 @@ Require:
 
 For Android Google human auth also require the matching `GOOGLE_SERVER_CLIENT_ID` at runtime when sign-in is attempted.
 
-- [ ] **Step 7: Verify**
+- [x] **Step 7: Verify**
 
 Run:
 
@@ -402,7 +406,7 @@ from Admin.
 
 Expected: builds and tests pass without requiring a live sign-in during build.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/sarisupply_auth packages/sarisupply_firebase apps
@@ -438,7 +442,7 @@ git commit -m "feat: add Firebase bootstrap and Google authentication"
 - Produces: `runIdempotent(operationKey, handler)`
 - Produces admin collection: `platformAdmins/{uid}`
 
-- [ ] **Step 1: Write failing authorization tests**
+- [x] **Step 1: Write failing authorization tests**
 
 Test:
 
@@ -456,21 +460,21 @@ active admin record + claim -> accepted
 
 Include the Review Focus stale-authorization tests here.
 
-- [ ] **Step 2: Write failing idempotency tests**
+- [x] **Step 2: Write failing idempotency tests**
 
 Assert that the same operation key invokes the business handler once and returns the original stored result on retry.
 
-- [ ] **Step 3: Implement authz/audit/idempotency helpers**
+- [x] **Step 3: Implement authz/audit/idempotency helpers**
 
 Backend helpers must load current Firestore state rather than accept client role assertions.
 
-- [ ] **Step 4: Implement trusted Admin bootstrap script**
+- [x] **Step 4: Implement trusted Admin bootstrap script**
 
 `grant-admin.ts` accepts either `--uid <uid>` or `--email <email>`, resolves the Firebase Auth user, writes `platformAdmins/{uid}` with `status: active`, and sets custom claim `sarisupplyAdmin: true`.
 
 Do not expose this operation as a client-callable function.
 
-- [ ] **Step 5: Implement baseline Firestore rules**
+- [x] **Step 5: Implement baseline Firestore rules**
 
 Allow only the read paths needed for the current signed-in user and deny direct writes to:
 
@@ -485,7 +489,7 @@ auditEvents
 
 All privileged writes remain Admin-SDK-only.
 
-- [ ] **Step 6: Run backend tests**
+- [x] **Step 6: Run backend tests**
 
 ```bash
 cd firebase/functions
@@ -497,7 +501,7 @@ Run rules tests against the Firestore emulator.
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add firebase
@@ -526,7 +530,7 @@ git commit -m "feat: add backend authorization and audit foundation"
 - Produces `MerchantApplicationRepository.saveDraft(...)`
 - Produces `MerchantApplicationRepository.submit(String applicationId)`
 
-- [ ] **Step 1: Write failing state-transition tests**
+- [x] **Step 1: Write failing state-transition tests**
 
 Assert:
 
@@ -539,7 +543,7 @@ rejected -> resubmitted -> pending_review
 approved -> cannot be resubmitted
 ```
 
-- [ ] **Step 2: Write approval idempotency and cross-tenant tests**
+- [x] **Step 2: Write approval idempotency and cross-tenant tests**
 
 Assert two calls with the same review operation ID create exactly one:
 
@@ -553,27 +557,27 @@ approval audit event
 
 A non-admin must never approve an application, even if the request body says `role=admin`.
 
-- [ ] **Step 3: Implement application functions**
+- [x] **Step 3: Implement application functions**
 
 Applicants may edit only their own draft/rejected-resubmittable application. Submission stamps server timestamps and transitions to pending review.
 
-- [ ] **Step 4: Implement Admin review transaction**
+- [x] **Step 4: Implement Admin review transaction**
 
 On approve, use one trusted transaction/idempotent operation to create merchant, branch, membership, merchantRef, application result, and audit event.
 
 On reject, preserve review notes and allow later resubmission.
 
-- [ ] **Step 5: Implement Flutter repository/gateway**
+- [x] **Step 5: Implement Flutter repository/gateway**
 
 Use callable Functions for mutations. Use Firestore only for allowed read/watch projections.
 
-- [ ] **Step 6: Run focused tests**
+- [x] **Step 6: Run focused tests**
 
 Run backend merchant tests, rules tests, and Flutter package tests.
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add firebase packages/sarisupply_auth packages/sarisupply_firebase
@@ -602,7 +606,7 @@ git commit -m "feat: add merchant application and approval workflow"
 - Produces callable `createBranch`
 - Produces callable `deactivateBranch`
 
-- [ ] **Step 1: Write failing Owner/Manager authorization tests**
+- [x] **Step 1: Write failing Owner/Manager authorization tests**
 
 Assert:
 
@@ -616,7 +620,7 @@ all-branches Manager cannot create/deactivate branch
 scoped Manager cannot mutate outside assigned branch
 ```
 
-- [ ] **Step 2: Write invitation race/idempotency tests**
+- [x] **Step 2: Write invitation race/idempotency tests**
 
 Cover:
 
@@ -629,25 +633,25 @@ same invite accepted twice -> one membership
 existing valid Manager membership -> no duplicate
 ```
 
-- [ ] **Step 3: Implement Owner-only branch functions**
+- [x] **Step 3: Implement Owner-only branch functions**
 
 Branch creation/deactivation must re-check Owner membership at execution time.
 
-- [ ] **Step 4: Implement invitation functions**
+- [x] **Step 4: Implement invitation functions**
 
 `listMyInvitations` must derive email from Firebase Auth; it must not accept arbitrary email input.
 
 Acceptance performs validation, membership creation, invite state change, merchantRef projection, and audit write atomically/idempotently.
 
-- [ ] **Step 5: Implement Flutter membership gateway**
+- [x] **Step 5: Implement Flutter membership gateway**
 
 Expose active memberships, branch scope, invitations, and Owner operations without exposing direct privileged Firestore writes.
 
-- [ ] **Step 6: Run focused tests and rules tests**
+- [x] **Step 6: Run focused tests and rules tests**
 
 Expected: PASS, including stale removed-Manager access denial.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add firebase packages/sarisupply_auth packages/sarisupply_firebase
@@ -676,7 +680,7 @@ git commit -m "feat: add branch and manager membership workflows"
 - Device Firebase UID format: `device:{deviceId}`
 - Device custom claim: `{principalType: 'device', deviceId: '<id>'}`
 
-- [ ] **Step 1: Write failing activation tests**
+- [x] **Step 1: Write failing activation tests**
 
 Assert:
 
@@ -689,27 +693,27 @@ deactivated branch cannot receive a device
 duplicate operation ID does not create a second device
 ```
 
-- [ ] **Step 2: Write revocation tests**
+- [x] **Step 2: Write revocation tests**
 
 Assert a device principal succeeds while active, then fails a protected backend operation immediately after its server device document is marked revoked.
 
-- [ ] **Step 3: Implement device activation**
+- [x] **Step 3: Implement device activation**
 
 Generate a stable device ID server-side for a new activation request, create the device document, create a Firebase custom token, and audit activation. Do not encode merchant/branch roles into the token.
 
-- [ ] **Step 4: Implement secondary Firebase Auth sign-in**
+- [x] **Step 4: Implement secondary Firebase Auth sign-in**
 
 The POS calls `activatePosDevice` under temporary human auth, then signs the returned token into the named `sarisupply-device` Firebase Auth context. Sign the human context out after activation unless the user is actively in an Owner/Manager admin flow.
 
-- [ ] **Step 5: Implement revocation and bootstrap**
+- [x] **Step 5: Implement revocation and bootstrap**
 
 `getDeviceBootstrap` must call `requireActiveDevice`; a stale custom token is insufficient if the device doc is revoked.
 
-- [ ] **Step 6: Run focused tests**
+- [x] **Step 6: Run focused tests**
 
 Expected: PASS, including wrong-tenant and stale-revocation tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add firebase packages/sarisupply_auth packages/sarisupply_firebase
@@ -743,7 +747,7 @@ git commit -m "feat: add trusted POS device identity"
 - Credential doc includes `salt`, `hash`, `credentialVersion`, `failedAttemptCount`, `lockedUntil`, and timestamps.
 - Server KDF: Node `crypto.scrypt`, 16-byte random salt, 32-byte output, `N=16384, r=8, p=1`, with Secret Manager pepper `CASHIER_PIN_PEPPER`.
 
-- [ ] **Step 1: Write failing PIN KDF tests**
+- [x] **Step 1: Write failing PIN KDF tests**
 
 Assert:
 
@@ -755,7 +759,7 @@ stored representation never contains plaintext PIN
 missing pepper causes service initialization failure
 ```
 
-- [ ] **Step 2: Write failing cashier authorization tests**
+- [x] **Step 2: Write failing cashier authorization tests**
 
 Assert:
 
@@ -769,7 +773,7 @@ reset increments credentialVersion
 change increments credentialVersion
 ```
 
-- [ ] **Step 3: Write rate-limit tests**
+- [x] **Step 3: Write rate-limit tests**
 
 Use this concrete policy:
 
@@ -782,15 +786,15 @@ subsequent failures: exponential backoff capped at 15 minutes
 successful verification: reset failure counter and lock
 ```
 
-- [ ] **Step 4: Implement server credential service**
+- [x] **Step 4: Implement server credential service**
 
 Never return server hash, salt, or pepper-derived material to Flutter clients.
 
-- [ ] **Step 5: Implement temporary PIN/change/reset behavior**
+- [x] **Step 5: Implement temporary PIN/change/reset behavior**
 
 First successful temporary-PIN verification may establish a protected change session but must not make that temporary PIN offline-capable. Permanent PIN change creates a new credential version.
 
-- [ ] **Step 6: Implement credential refresh projection**
+- [x] **Step 6: Implement credential refresh projection**
 
 For the device's branch return only cashier operational projection and:
 
@@ -809,11 +813,11 @@ Do not return the server verifier.
 
 Never place the pepper in `.env`, Dart, Firestore, or git.
 
-- [ ] **Step 8: Run backend and rules tests**
+- [x] **Step 8: Run backend and rules tests**
 
 Expected: PASS, including old credential-version rejection after change/reset.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add firebase packages/sarisupply_auth packages/sarisupply_firebase
@@ -841,7 +845,7 @@ git commit -m "feat: add secure cashier credential backend"
 - Local KDF: PBKDF2-HMAC-SHA256, 210,000 iterations, 32-byte output, random 16-byte salt.
 - Produces: `SecureOfflineCredentialStore` backed by `flutter_secure_storage`.
 
-- [ ] **Step 1: Write failing seven-day policy tests**
+- [x] **Step 1: Write failing seven-day policy tests**
 
 Assert:
 
@@ -852,15 +856,15 @@ server credentialVersion newer than local -> requiresOnlineReenrollment
 cashier suspended in refreshed projection -> no local login
 ```
 
-- [ ] **Step 2: Add the Review Focus clock rollback test**
+- [x] **Step 2: Add the Review Focus clock rollback test**
 
 If `now` is more than five minutes earlier than `lastObservedWallClock`, return `requiresOnlineRefresh`; never extend expiry from the rolled-back clock.
 
-- [ ] **Step 3: Write failing local verifier tests**
+- [x] **Step 3: Write failing local verifier tests**
 
 Assert correct PIN matches, wrong PIN fails, plaintext PIN is not stored, and two salts produce different verifier bytes.
 
-- [ ] **Step 4: Implement secure local credential storage**
+- [x] **Step 4: Implement secure local credential storage**
 
 Store only:
 
@@ -876,7 +880,7 @@ lastObservedWallClock
 failedAttempts/cooldown state
 ```
 
-- [ ] **Step 5: Implement offline login service**
+- [x] **Step 5: Implement offline login service**
 
 Behavior:
 
@@ -894,11 +898,11 @@ offline:
   open session only if allowed
 ```
 
-- [ ] **Step 6: Implement offline retry controls**
+- [x] **Step 6: Implement offline retry controls**
 
 Mirror the server cooldown shape locally but keep local lockout temporary. Queue a security event for later sync after repeated failures.
 
-- [ ] **Step 7: Run tests**
+- [x] **Step 7: Run tests**
 
 ```bash
 cd packages/sarisupply_auth && flutter test
@@ -907,7 +911,7 @@ cd ../../apps/pos && flutter test test/features/cashier_auth
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/sarisupply_auth apps/pos
@@ -939,7 +943,7 @@ git commit -m "feat: add seven-day offline cashier authentication"
 - Produces POS gate states: `signedOut`, `noMerchant`, `pendingMerchant`, `approvedNeedsDeviceActivation`, `deviceReadyCashierLocked`, `cashierActive`, `deviceRevoked`, `offlineCredentialsExpired`.
 - Produces Admin gate states: `signedOut`, `signedInNotAdmin`, `adminReady`.
 
-- [ ] **Step 1: Write POS gate widget tests**
+- [x] **Step 1: Write POS gate widget tests**
 
 Use fake repositories to assert exact screens for:
 
@@ -953,25 +957,25 @@ revoked device -> blocked/recovery message
 expired offline bundle -> reconnect-required message
 ```
 
-- [ ] **Step 2: Run tests and confirm they fail**
+- [x] **Step 2: Run tests and confirm they fail**
 
 Run the new POS widget tests only.
 
-- [ ] **Step 3: Implement Owner onboarding UI**
+- [x] **Step 3: Implement Owner onboarding UI**
 
 Keep the first milestone UI functional and simple. Applicant can edit business profile and first branch draft, submit, and see pending/rejected/approved state.
 
 Do not expose sales/inventory screens yet.
 
-- [ ] **Step 4: Implement POS activation UI**
+- [x] **Step 4: Implement POS activation UI**
 
 Owner/Manager Google sign-in is temporary. Merchant and branch choices come only from active authorized memberships. On success, establish the device Firebase context and return to cashier login.
 
-- [ ] **Step 5: Implement cashier login and forced PIN-change UI**
+- [x] **Step 5: Implement cashier login and forced PIN-change UI**
 
 Temporary PIN must route to online PIN change before POS unlock. Offline-expired credentials show reconnect instructions rather than a raw exception.
 
-- [ ] **Step 6: Write Admin widget tests**
+- [x] **Step 6: Write Admin widget tests**
 
 Assert:
 
@@ -982,15 +986,15 @@ approve action -> calls review repository exactly once
 reject requires review note input
 ```
 
-- [ ] **Step 7: Implement Admin auth and merchant-review screens**
+- [x] **Step 7: Implement Admin auth and merchant-review screens**
 
 Admin list/read state may use Firestore projections; approve/reject mutations use callable Functions.
 
-- [ ] **Step 8: Keep Driver app bootstrapped only**
+- [x] **Step 8: Keep Driver app bootstrapped only**
 
 Verify the Driver app initializes the selected Firebase environment but do not add merchant/cashier screens.
 
-- [ ] **Step 9: Run all Flutter tests and builds**
+- [x] **Step 9: Run all Flutter tests and builds**
 
 ```bash
 dart run melos run verify
@@ -1007,7 +1011,7 @@ flutter build apk --debug --flavor dev --dart-define=SARISUPPLY_ENV=dev
 
 Expected: PASS.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add apps
@@ -1029,7 +1033,7 @@ git commit -m "feat: add merchant approval and POS authentication flows"
 - Produces: `bash tool/verify_firebase.sh`
 - Extends: `bash tool/verify_local.sh` so Flutter verification remains available even when live Firebase credentials are absent.
 
-- [ ] **Step 1: Write the end-to-end emulator acceptance test**
+- [x] **Step 1: Write the end-to-end emulator acceptance test**
 
 Cover the approved happy path:
 
@@ -1046,7 +1050,7 @@ Owner auth
 -> offline verifier can be enrolled
 ```
 
-- [ ] **Step 2: Add the three critical negative acceptance scenarios**
+- [x] **Step 2: Add the three critical negative acceptance scenarios**
 
 Scenario A:
 
@@ -1075,7 +1079,7 @@ same idempotency key sent twice for approval/invite/device activation
 -> stable returned result
 ```
 
-- [ ] **Step 3: Create `tool/verify_firebase.sh`**
+- [x] **Step 3: Create `tool/verify_firebase.sh`**
 
 The script must:
 
@@ -1088,11 +1092,11 @@ The script must:
 
 It must never point emulator tests at the Production project.
 
-- [ ] **Step 4: Update local verification**
+- [x] **Step 4: Update local verification**
 
 Keep existing Flutter format/analyze/test/build checks. Add a clear optional Firebase verification phase when Node/npm/Firebase CLI are installed; do not silently skip a requested Firebase verification.
 
-- [ ] **Step 5: Run fresh full verification**
+- [x] **Step 5: Run fresh full verification**
 
 Run:
 
@@ -1134,7 +1138,7 @@ With the real Development Firebase project only:
 
 Do not use Production for this smoke test.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add firebase tool README.md docs
