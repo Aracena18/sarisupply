@@ -1,6 +1,6 @@
 # SariSupply Current State
 
-**Last reviewed:** 2026-10-02
+**Last reviewed:** 2026-10-03
 
 This document describes implementation reality on `main`.
 
@@ -34,16 +34,20 @@ Tasks 1–11 are implemented and covered by automated tests:
 
 ## Verification
 
-On 2026-10-02, the following passed on `main`:
+On 2026-10-03, the full harness passed on `chore/firebase-dependency-security`, based on the merged `main` implementation:
 
-- `bash tool/verify_fast.sh`
-- `bash tool/verify_firebase.sh`: 54 tests passed across 14 files.
-- `bash tool/verify_harness.sh`
-- Admin web build.
-- POS Android `devDebug` APK build.
-- Driver Android `devDebug` APK build.
+- `bash tool/verify_fast.sh` — PASS.
+- `bash tool/verify_firebase.sh` — PASS; 54 tests passed across 14 files.
+- `bash tool/verify_harness.sh` — PASS.
+- Admin web build — PASS.
+- POS Android `devDebug` APK build — PASS.
+- Driver Android `devDebug` APK build — PASS.
 
 Verification used Flutter 3.44.9, Dart 3.12.2, Node 22.22.1, and the JDK selected by Flutter (Java 25).
+
+## Firebase Functions dependency security
+
+The 2026-10-03 npm audit reported seven affected-package entries (five high and two moderate). Triage found that the high entries are one gRPC advisory propagated through a development-only emulator-testing dependency chain; the production-only audit reports no high findings. The two moderate entries are one UUID advisory in an optional transitive Cloud Storage dependency chain, with no affected UUID or Cloud Storage API use in the current Functions source. Both findings are temporarily accepted pending upstream dependency updates. See [Firebase Functions dependency triage](FIREBASE_FUNCTIONS_DEPENDENCY_TRIAGE.md) for paths, evidence, and reevaluation conditions.
 
 ## Operational work still outstanding
 

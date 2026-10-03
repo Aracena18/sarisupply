@@ -1,6 +1,6 @@
 # SariSupply Implementation Status
 
-Updated: 2026-10-02
+Updated: 2026-10-03
 
 The production roadmap is in `SARI_SUPPLY_PRODUCTION_PLAN.md`. The Firebase identity, tenant, device, and cashier-auth milestone (Tasks 1–11) is implemented and merged into `main` in PR #2. The repository implementation is verified; live deployment and operational validation remain outstanding as listed below.
 
@@ -37,7 +37,7 @@ Both new projects are currently on the no-cost Spark plan. Cloud Storage bucket 
 
 ## Verification
 
-Verified on `main` on 2026-10-02:
+Latest verification on `chore/firebase-dependency-security`, based on the merged `main` implementation, on 2026-10-03:
 
 - `bash tool/verify_fast.sh` — PASS.
 - `bash tool/verify_firebase.sh` — PASS; 54 tests passed across 14 files.
@@ -46,4 +46,4 @@ Verified on `main` on 2026-10-02:
 - POS Android `devDebug` APK — PASS.
 - Driver Android `devDebug` APK — PASS.
 
-The verification environment used Flutter 3.44.9, Dart 3.12.2, Node 22.22.1, and Flutter's selected JDK (Java 25). `npm ci` reported 7 dependency vulnerabilities (2 moderate, 5 high); those advisories have not been triaged in this documentation change.
+The verification environment used Flutter 3.44.9, Dart 3.12.2, Node 22.22.1, and Flutter's selected JDK (Java 25). The 2026-10-03 Firebase Functions npm audit reported seven affected-package entries (2 moderate, 5 high); their scope and temporary dispositions are recorded in [Firebase Functions dependency triage](../engineering/FIREBASE_FUNCTIONS_DEPENDENCY_TRIAGE.md). The audit used npm 10.9.4.
