@@ -5,7 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { grantPlatformAdmin } from '../src/admin/admin-service';
 import {
   changeCashierPin, createCashier, refreshCashierCredentialBundle,
-  verifyCashierPin,
+  reportOfflinePinFailures, verifyCashierPin,
 } from '../src/cashier/cashier-service';
 import { createPinHasher } from '../src/cashier/pin-kdf';
 import { activatePosDevice, getDeviceBootstrap, revokePosDevice } from '../src/device/device-service';
@@ -130,6 +130,73 @@ describe('identity and tenant acceptance', () => {
     await revokePosDevice(db, owner.request, merchantId, activated.deviceId);
     await expect(getDeviceBootstrap(db, device))
       .rejects.toMatchObject({ code: 'permission-denied' });
+  });
+
+  it('accepts offline PIN failure reports once and rejects a revoked device', async () => {
+    const { owner, merchantId, branchId } = await approvedMerchant();
+    const activated = await activatePosDevice(db, mint, owner.request, {
+      merchantId, branchId, displayName: 'Counter tablet', platform: 'android',
+      appVersion: '0.1.0', operationId: 'activate-1',
+    });
+    const device = { auth: { uid: `device:${activated.deviceId}`, token: {
+      principalType: 'device', merchantId, deviceId: activated.deviceId,
+    } } };
+    const cashier = await createCashier(db, hasher, owner.request, {
+      merchantId, displayName: 'Ana', employeeCode: 'EMP-1',
+      assignedBranchIds: [branchId],
+    });
+    const event = {
+      eventId: 'offline-event-1234567890',
+      cashierId: cashier.cashierId,
+      failedAttempts: 5,
+      occurredAt: '2026-09-28T12:00:00.000Z',
+    };
+
+    await expect(reportOfflinePinFailures(db, owner.request, [event]))
+      .rejects.toMatchObject({ code: 'unauthenticated' });
+    expect(await reportOfflinePinFailures(db, device, [event]))
+      .toEqual({ acceptedEventIds: [event.eventId] });
+    expect(await reportOfflinePinFailures(db, device, [event]))
+      .toEqual({ acceptedEventIds: [event.eventId] });
+    await expect(reportOfflinePinFailures(db, device, [{
+      ...event,
+      failedAttempts: 6,
+    }])).rejects.toMatchObject({ code: 'already-exists' });
+    const reports = await db.collection(`merchants/${merchantId}/auditEvents`)
+      .where('action', '==', 'cashier.offlinePinFailed').get();
+    expect(reports.size).toBe(1);
+    expect(reports.docs[0].get('targetId')).toBe(cashier.cashierId);
+    expect(reports.docs[0].get('branchId')).toBe(branchId);
+    expect(reports.docs[0].get('details.reportedDeviceTime')).toBe(event.occurredAt);
+
+    await revokePosDevice(db, owner.request, merchantId, activated.deviceId);
+    await expect(reportOfflinePinFailures(db, device, [event]))
+      .rejects.toMatchObject({ code: 'permission-denied' });
+  });
+
+  it('does not let one tenant device report against another tenant cashier', async () => {
+    const first = await approvedMerchant();
+    const second = await approvedMerchant();
+    const activated = await activatePosDevice(db, mint, first.owner.request, {
+      merchantId: first.merchantId, branchId: first.branchId,
+      displayName: 'Counter tablet', platform: 'android', appVersion: '0.1.0',
+      operationId: 'activate-1',
+    });
+    const device = { auth: { uid: `device:${activated.deviceId}`, token: {
+      principalType: 'device', merchantId: first.merchantId,
+      deviceId: activated.deviceId,
+    } } };
+    const cashier = await createCashier(db, hasher, second.owner.request, {
+      merchantId: second.merchantId, displayName: 'Ana', employeeCode: 'EMP-2',
+      assignedBranchIds: [second.branchId],
+    });
+
+    await expect(reportOfflinePinFailures(db, device, [{
+      eventId: 'offline-event-1234567890',
+      cashierId: cashier.cashierId,
+      failedAttempts: 5,
+      occurredAt: '2026-09-28T12:00:00.000Z',
+    }])).rejects.toMatchObject({ code: 'permission-denied' });
   });
 
   it('retries approval, invitation, and activation without duplicate effects', async () => {

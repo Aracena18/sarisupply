@@ -55,15 +55,33 @@ abstract final class OfflineCredentialPolicy {
       return OfflineCredentialDecision.requiresOnlineReenrollment;
     }
 
-    final anchor = time.anchor;
-    final reading = time.reading;
     if (credential.cashierStatus != CashierStatus.active ||
         credential.mustChangePin ||
-        !credential.bundleExpiresAt.isAfter(credential.bundleIssuedAt) ||
-        credential.bundleExpiresAt.difference(credential.bundleIssuedAt) >
-            maximumOfflineAge ||
-        time.now.isBefore(credential.bundleIssuedAt) ||
-        !time.now.isBefore(credential.bundleExpiresAt) ||
+        !isWithinTrustedWindow(
+          issuedAt: credential.bundleIssuedAt,
+          expiresAt: credential.bundleExpiresAt,
+          time: time,
+        )) {
+      return OfflineCredentialDecision.requiresOnlineRefresh;
+    }
+
+    return OfflineCredentialDecision.allowed;
+  }
+
+  /// Validates an offline window against both wall time and a same-boot
+  /// monotonic clock sample. Missing or reset elapsed-time evidence fails
+  /// closed so callers can require an online refresh.
+  static bool isWithinTrustedWindow({
+    required DateTime issuedAt,
+    required DateTime expiresAt,
+    required OfflineTimeEvidence time,
+  }) {
+    final anchor = time.anchor;
+    final reading = time.reading;
+    if (!expiresAt.isAfter(issuedAt) ||
+        expiresAt.difference(issuedAt) > maximumOfflineAge ||
+        time.now.isBefore(issuedAt) ||
+        !time.now.isBefore(expiresAt) ||
         time.now.isBefore(
             time.lastObservedWallClock.subtract(maximumClockRollback)) ||
         anchor == null ||
@@ -73,21 +91,21 @@ abstract final class OfflineCredentialPolicy {
         anchor.bootCount != reading.bootCount ||
         anchor.elapsedRealtime.isNegative ||
         reading.elapsedRealtime < anchor.elapsedRealtime) {
-      return OfflineCredentialDecision.requiresOnlineRefresh;
+      return false;
     }
 
     final elapsed = reading.elapsedRealtime - anchor.elapsedRealtime;
     final wallElapsed = time.now.difference(anchor.wallClock);
     final drift = wallElapsed - elapsed;
     if (elapsed >= maximumOfflineAge ||
-        elapsed >= credential.bundleExpiresAt.difference(anchor.wallClock) ||
+        elapsed >= expiresAt.difference(anchor.wallClock) ||
         drift > maximumClockRollback ||
         drift < -maximumClockRollback ||
-        anchor.wallClock.isBefore(credential.bundleIssuedAt) ||
-        !anchor.wallClock.isBefore(credential.bundleExpiresAt)) {
-      return OfflineCredentialDecision.requiresOnlineRefresh;
+        anchor.wallClock.isBefore(issuedAt) ||
+        !anchor.wallClock.isBefore(expiresAt)) {
+      return false;
     }
 
-    return OfflineCredentialDecision.allowed;
+    return true;
   }
 }

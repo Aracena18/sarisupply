@@ -24,12 +24,23 @@ The production roadmap is in `SARI_SUPPLY_PRODUCTION_PLAN.md`. The Firebase iden
 - POS sign-in, merchant application, device activation, cashier login, and temporary PIN change screens, plus Admin sign-in and application review UI.
 - Local Auth, Firestore, and Functions emulator acceptance coverage for application approval, Manager branch scoping, device revocation, and idempotent retries.
 
+## Offline-auth resilience follow-up
+
+The unmerged `feat/offline-auth-resilience` branch adds securely cached POS
+merchant/branch/device context with a seven-day same-boot monotonic limit and
+fail-closed behavior after reboot, missing clock evidence, or server revocation.
+It also adds durable offline cashier PIN failure reports with stable IDs,
+retry-safe device-authenticated uploads, server-derived audit scope, and a
+200-event queue limit that requires online refresh before further offline PIN
+attempts. Emulator and POS regression tests cover the trust, retry, revocation,
+and tenant-isolation cases. This branch passes `verify_fast.sh` and
+`verify_harness.sh`; it is not yet merged into `main` or deployed.
+
 ## Operational deployment and validation still needed
 
 - Cloud Functions deployment and Secret Manager pepper provisioning after billing is linked to the Firebase projects.
 - Pre-authorization of the real Admin user and live end-to-end testing of device activation and cashier enrollment.
-- Upload of queued offline PIN failure events after connectivity returns.
-- Separate offline-auth resilience work for restoring verified POS tenant context offline and syncing queued cashier security events; it was excluded from PR #2 and still requires review.
+- On `main`, offline tenant-context recovery and queued PIN failure event sync remain outstanding pending review and merge of `feat/offline-auth-resilience`.
 
 These items are not implied complete by emulator tests or successful app builds. The Driver application still shows a foundation screen. POS currently unlocks only an authenticated cashier session; sales, inventory, warehouse, delivery, and reporting are later milestones.
 
@@ -47,3 +58,8 @@ Latest verification on `chore/firebase-dependency-security`, based on the merged
 - Driver Android `devDebug` APK — PASS.
 
 The verification environment used Flutter 3.44.9, Dart 3.12.2, Node 22.22.1, and Flutter's selected JDK (Java 25). The 2026-10-03 Firebase Functions npm audit reported seven affected-package entries (2 moderate, 5 high); their scope and temporary dispositions are recorded in [Firebase Functions dependency triage](../engineering/FIREBASE_FUNCTIONS_DEPENDENCY_TRIAGE.md). The audit used npm 10.9.4.
+
+The 2026-10-03 full harness run on `feat/offline-auth-resilience` passed with 56
+Firebase emulator tests across 14 files, plus Admin web, POS Android `devDebug`,
+and Driver Android `devDebug` builds. The run used Flutter 3.44.9, Dart 3.12.2,
+Node 22.22.1, and the JDK selected by Flutter (Java 25).

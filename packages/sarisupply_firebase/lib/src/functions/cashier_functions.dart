@@ -117,4 +117,20 @@ final class CashierFunctions implements CashierRepository {
       }).toList(),
     );
   }
+
+  @override
+  Future<List<String>> reportOfflinePinFailures(
+      List<OfflinePinFailureEvent> events) async {
+    final result = await _deviceGateway.call('reportOfflinePinFailures', {
+      'events': events
+          .map((event) => {
+                'eventId': event.eventId,
+                'cashierId': event.cashierId,
+                'failedAttempts': event.failedAttempts,
+                'occurredAt': event.occurredAt.toUtc().toIso8601String(),
+              })
+          .toList(),
+    });
+    return List<String>.from(result['acceptedEventIds'] as List);
+  }
 }

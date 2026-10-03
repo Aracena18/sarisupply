@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
@@ -136,14 +137,105 @@ final class StoredOfflineCredential {
   }
 }
 
+final class StoredDeviceContext {
+  const StoredDeviceContext({
+    required this.deviceId,
+    required this.merchantId,
+    required this.branchId,
+    required this.verifiedAt,
+    required this.lastObservedWallClock,
+    required this.clockAnchor,
+  });
+
+  final String deviceId;
+  final String merchantId;
+  final String branchId;
+  final DateTime verifiedAt;
+  final DateTime lastObservedWallClock;
+  final OfflineClockAnchor? clockAnchor;
+
+  bool isUsableAt(OfflineTimeEvidence time) =>
+      OfflineCredentialPolicy.isWithinTrustedWindow(
+        issuedAt: verifiedAt,
+        expiresAt: verifiedAt.add(OfflineCredentialPolicy.maximumOfflineAge),
+        time: time,
+      );
+
+  StoredDeviceContext copyWith({DateTime? lastObservedWallClock}) =>
+      StoredDeviceContext(
+        deviceId: deviceId,
+        merchantId: merchantId,
+        branchId: branchId,
+        verifiedAt: verifiedAt,
+        lastObservedWallClock:
+            lastObservedWallClock ?? this.lastObservedWallClock,
+        clockAnchor: clockAnchor,
+      );
+
+  Map<String, Object?> toMap() => {
+        'deviceId': deviceId,
+        'merchantId': merchantId,
+        'branchId': branchId,
+        'verifiedAt': verifiedAt.toUtc().toIso8601String(),
+        'lastObservedWallClock':
+            lastObservedWallClock.toUtc().toIso8601String(),
+        'clockAnchor': clockAnchor == null
+            ? null
+            : {
+                'wallClock': clockAnchor!.wallClock.toUtc().toIso8601String(),
+                'bootCount': clockAnchor!.bootCount,
+                'elapsedRealtimeMs':
+                    clockAnchor!.elapsedRealtime.inMilliseconds,
+              },
+      };
+
+  factory StoredDeviceContext.fromMap(Map<String, dynamic> map) =>
+      StoredDeviceContext(
+        deviceId: map['deviceId'] as String,
+        merchantId: map['merchantId'] as String,
+        branchId: map['branchId'] as String,
+        verifiedAt: DateTime.parse(map['verifiedAt'] as String),
+        lastObservedWallClock:
+            DateTime.parse(map['lastObservedWallClock'] as String),
+        clockAnchor: map['clockAnchor'] == null
+            ? null
+            : StoredOfflineCredential._anchorFromMap(
+                Map<String, dynamic>.from(map['clockAnchor'] as Map)),
+      );
+}
+
 final class SecureOfflineCredentialStore {
   SecureOfflineCredentialStore([SecureKeyValueStore? keys])
       : _keys = keys ?? FlutterSecureKeyValueStore();
 
+  static const maxQueuedSecurityEvents = 200;
+
   final SecureKeyValueStore _keys;
   static String _credentialKey(String deviceId, String cashierId) =>
       'offline-credential:$deviceId:$cashierId';
-  static String _eventsKey(String deviceId) => 'offline-events:$deviceId';
+  static String _legacyEventsKey(String deviceId) => 'offline-events:$deviceId';
+  static String _eventPrefix(String deviceId) => 'offline-event:$deviceId:';
+  static String _eventKey(String deviceId, String eventId) =>
+      '${_eventPrefix(deviceId)}$eventId';
+  static String _contextKey(String deviceId) => 'device-context:$deviceId';
+  static String _newEventId() {
+    final random = Random.secure();
+    return base64Url
+        .encode(List<int>.generate(16, (_) => random.nextInt(256)))
+        .replaceAll('=', '');
+  }
+
+  static bool _isEventId(Object? value) =>
+      value is String && RegExp(r'^[A-Za-z0-9_-]{16,80}$').hasMatch(value);
+
+  static bool _sameEvent(
+      Map<String, Object?> left, Map<String, Object?> right) {
+    if (left.length != right.length) return false;
+    for (final entry in left.entries) {
+      if (right[entry.key] != entry.value) return false;
+    }
+    return true;
+  }
 
   Future<StoredOfflineCredential?> read(
       String deviceId, String cashierId) async {
@@ -182,7 +274,33 @@ final class SecureOfflineCredentialStore {
       await delete(deviceId, record.cashierId);
     }
     await clearQueuedSecurityEvents(deviceId);
+    await _keys.delete(_contextKey(deviceId));
   }
+
+  Future<StoredDeviceContext?> readDeviceContext(String deviceId) async {
+    final key = _contextKey(deviceId);
+    final encoded = await _keys.read(key);
+    if (encoded == null) return null;
+    try {
+      final context = StoredDeviceContext.fromMap(
+          Map<String, dynamic>.from(jsonDecode(encoded) as Map));
+      if (context.deviceId != deviceId ||
+          context.merchantId.trim().isEmpty ||
+          context.branchId.trim().isEmpty) {
+        throw const FormatException('Invalid device context');
+      }
+      return context;
+    } on FormatException {
+      await _keys.delete(key);
+      return null;
+    } on TypeError {
+      await _keys.delete(key);
+      return null;
+    }
+  }
+
+  Future<void> saveDeviceContext(StoredDeviceContext context) =>
+      _keys.write(_contextKey(context.deviceId), jsonEncode(context.toMap()));
 
   Future<List<StoredOfflineCredential>> listForDevice(String deviceId) async {
     final entries = await _keys.readAll();
@@ -202,29 +320,121 @@ final class SecureOfflineCredentialStore {
     required int failedAttempts,
     required DateTime occurredAt,
   }) async {
-    final events = await queuedSecurityEvents(deviceId);
-    events.add({
-      'type': 'offline_pin_failed',
-      'cashierId': cashierId,
-      'failedAttempts': failedAttempts,
-      'occurredAt': occurredAt.toIso8601String(),
-    });
+    if (!await hasSecurityEventCapacity(deviceId)) {
+      throw StateError('Offline security event queue is full');
+    }
+    var eventId = _newEventId();
+    var key = _eventKey(deviceId, eventId);
+    while (await _keys.read(key) != null) {
+      eventId = _newEventId();
+      key = _eventKey(deviceId, eventId);
+    }
     await _keys.write(
-        _eventsKey(deviceId),
-        jsonEncode(events.length > 200
-            ? events.sublist(events.length - 200)
-            : events));
+        key,
+        jsonEncode({
+          'type': 'offline_pin_failed',
+          'eventId': eventId,
+          'cashierId': cashierId,
+          'failedAttempts': failedAttempts,
+          'occurredAt': occurredAt.toIso8601String(),
+        }));
+  }
+
+  Future<bool> hasSecurityEventCapacity(String deviceId) async {
+    try {
+      await queuedSecurityEvents(deviceId);
+    } on Object {
+      return false;
+    }
+    final entries = await _keys.readAll();
+    if (entries.containsKey(_legacyEventsKey(deviceId))) return false;
+    final prefix = _eventPrefix(deviceId);
+    final count = entries.keys.where((key) => key.startsWith(prefix)).length;
+    return count < maxQueuedSecurityEvents;
   }
 
   Future<List<Map<String, Object?>>> queuedSecurityEvents(
       String deviceId) async {
-    final encoded = await _keys.read(_eventsKey(deviceId));
-    if (encoded == null) return [];
-    return (jsonDecode(encoded) as List)
-        .map((event) => Map<String, Object?>.from(event as Map))
-        .toList();
+    final entries = await _keys.readAll();
+    final prefix = _eventPrefix(deviceId);
+    final events = <Map<String, Object?>>[];
+    for (final entry in entries.entries.where((entry) =>
+        entry.key.startsWith(prefix) &&
+        entry.key != _legacyEventsKey(deviceId))) {
+      try {
+        final event = Map<String, Object?>.from(jsonDecode(entry.value) as Map);
+        final eventId = event['eventId'];
+        if (_isEventId(eventId) &&
+            entry.key == _eventKey(deviceId, eventId as String)) {
+          events.add(event);
+        }
+      } on FormatException {
+        // Keep unreadable records on disk instead of discarding pending data.
+      } on TypeError {
+        // Keep unreadable records on disk instead of discarding pending data.
+      }
+    }
+
+    final legacyKey = _legacyEventsKey(deviceId);
+    final legacyEncoded = entries[legacyKey];
+    if (legacyEncoded != null) {
+      final legacyEvents = (jsonDecode(legacyEncoded) as List)
+          .map((event) => Map<String, Object?>.from(event as Map))
+          .toList();
+      final eventsById = <String, Map<String, Object?>>{
+        for (final event in events) event['eventId']! as String: event,
+      };
+      final usedIds = eventsById.keys.toSet();
+      final legacyIds = <String>{};
+      for (final event in legacyEvents) {
+        var eventId = event['eventId'];
+        final existing = _isEventId(eventId) ? eventsById[eventId] : null;
+        if (!_isEventId(eventId) ||
+            legacyIds.contains(eventId) ||
+            (existing != null && !_sameEvent(existing, event))) {
+          eventId = _newEventId();
+          while (usedIds.contains(eventId) || legacyIds.contains(eventId)) {
+            eventId = _newEventId();
+          }
+        }
+        event['eventId'] = eventId;
+        final stableId = eventId as String;
+        legacyIds.add(stableId);
+        usedIds.add(stableId);
+      }
+
+      // Save the assigned IDs first so an interrupted migration can resume
+      // without generating new IDs or duplicating accepted reports.
+      await _keys.write(legacyKey, jsonEncode(legacyEvents));
+      for (final event in legacyEvents) {
+        final eventId = event['eventId']! as String;
+        final key = _eventKey(deviceId, eventId);
+        final existing = eventsById[eventId];
+        if (existing != null && _sameEvent(existing, event)) continue;
+        if (await _keys.read(key) == null) {
+          await _keys.write(key, jsonEncode(event));
+        }
+        events.add(event);
+      }
+      await _keys.delete(legacyKey);
+    }
+    return events;
   }
 
-  Future<void> clearQueuedSecurityEvents(String deviceId) =>
-      _keys.delete(_eventsKey(deviceId));
+  Future<void> acknowledgeSecurityEvents(
+      String deviceId, List<String> acceptedEventIds) async {
+    await queuedSecurityEvents(deviceId);
+    for (final eventId in acceptedEventIds.where(_isEventId)) {
+      await _keys.delete(_eventKey(deviceId, eventId));
+    }
+  }
+
+  Future<void> clearQueuedSecurityEvents(String deviceId) async {
+    final entries = await _keys.readAll();
+    final prefix = _eventPrefix(deviceId);
+    for (final key in entries.keys.where((key) => key.startsWith(prefix))) {
+      await _keys.delete(key);
+    }
+    await _keys.delete(_legacyEventsKey(deviceId));
+  }
 }

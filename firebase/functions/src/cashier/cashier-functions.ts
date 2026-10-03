@@ -7,6 +7,7 @@ import {
   changeCashierPin as changePin,
   createCashier as create,
   refreshCashierCredentialBundle as refreshBundle,
+  reportOfflinePinFailures as reportFailures,
   resetCashierPin as resetPin,
   setCashierStatus as setStatus,
   verifyCashierPin as verifyPin,
@@ -73,3 +74,8 @@ export const resetCashierPin = onCall(secureOptions, (request) =>
 
 export const refreshCashierCredentialBundle = onCall(options, (request) =>
   handle(() => refreshBundle(getFirestore(), request)));
+
+export const reportOfflinePinFailures = onCall(options, (request) =>
+  handle(() => reportFailures(
+    getFirestore(), request, dataObject(request.data).events,
+  )));

@@ -32,6 +32,26 @@ Tasks 1–11 are implemented and covered by automated tests:
 - Task 10: onboarding, activation, cashier, and Admin application states.
 - Task 11: Firebase emulator acceptance tests and verification commands.
 
+## Offline-auth resilience follow-up
+
+The unmerged branch `feat/offline-auth-resilience` extends the identity
+milestone with:
+
+- Securely retained merchant, branch, and device context for offline POS
+  recovery, limited to seven days by same-boot monotonic clock evidence. Missing
+  clock evidence, reboot, or a server revocation requires online recovery.
+- Durable offline cashier PIN failure reports with stable event IDs, legacy
+  queue migration, retry-safe device-authenticated upload, and server-derived
+  tenant, branch, and device audit context. Upload failures and partial
+  acknowledgements keep pending events queued; explicit local device-session
+  clearing removes device-scoped state. The queue is bounded at 200; a full
+  queue requires online refresh before another offline PIN attempt.
+- Regression and emulator coverage for expiry, clock reset/manipulation,
+  retries, revocation, unauthenticated callers, and cross-tenant isolation.
+
+This follow-up is implemented and verified on the branch, but is not merged into
+`main`, deployed, or validated on a live device.
+
 ## Verification
 
 On 2026-10-03, the full harness passed on `chore/firebase-dependency-security`, based on the merged `main` implementation:
@@ -45,6 +65,12 @@ On 2026-10-03, the full harness passed on `chore/firebase-dependency-security`, 
 
 Verification used Flutter 3.44.9, Dart 3.12.2, Node 22.22.1, and the JDK selected by Flutter (Java 25).
 
+On 2026-10-03, `feat/offline-auth-resilience` also passed the full harness after
+the offline-auth follow-up: 56 Firebase emulator tests across 14 files, Admin
+web build, POS Android `devDebug` build, and Driver Android `devDebug` build all
+passed. Flutter 3.44.9, Dart 3.12.2, Node 22.22.1, and Flutter's selected JDK
+(Java 25) were used.
+
 ## Firebase Functions dependency security
 
 The 2026-10-03 npm audit reported seven affected-package entries (five high and two moderate). Triage found that the high entries are one gRPC advisory propagated through a development-only emulator-testing dependency chain; the production-only audit reports no high findings. The two moderate entries are one UUID advisory in an optional transitive Cloud Storage dependency chain, with no affected UUID or Cloud Storage API use in the current Functions source. Both findings are temporarily accepted pending upstream dependency updates. See [Firebase Functions dependency triage](FIREBASE_FUNCTIONS_DEPENDENCY_TRIAGE.md) for paths, evidence, and reevaluation conditions.
@@ -55,8 +81,7 @@ The merged implementation is not yet a production deployment. Remaining work inc
 
 - Deploy Cloud Functions and provision the cashier PIN pepper in Secret Manager after billing is linked to the Firebase projects.
 - Pre-authorize the real Admin user and complete live end-to-end testing of device activation and cashier enrollment.
-- Upload queued offline PIN failure events after connectivity returns.
-- Review the separate offline-auth resilience follow-up for retaining verified POS tenant context offline and syncing queued security events. Those changes were excluded from PR #2.
+- On `main`, offline tenant-context recovery and queued PIN failure event sync remain outstanding. Their implementation is on `feat/offline-auth-resilience` and awaits review and merge.
 
 The Driver app still shows a foundation screen. POS currently unlocks an authenticated cashier session; sales, inventory, warehouse, delivery, and reporting remain later milestones.
 
