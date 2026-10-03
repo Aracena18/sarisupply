@@ -25,6 +25,7 @@ export {
   changeCashierPin,
   createCashier,
   refreshCashierCredentialBundle,
+  reportOfflinePinFailures,
   resetCashierPin,
   setCashierStatus,
   verifyCashierPin,

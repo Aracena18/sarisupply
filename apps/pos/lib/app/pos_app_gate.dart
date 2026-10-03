@@ -26,6 +26,8 @@ final class PosGateSnapshot {
     this.application,
     this.memberships = const [],
     this.deviceId,
+    this.merchantId,
+    this.branchId,
     this.session,
   });
 
@@ -33,6 +35,8 @@ final class PosGateSnapshot {
   final MerchantApplication? application;
   final List<MerchantMembership> memberships;
   final String? deviceId;
+  final String? merchantId;
+  final String? branchId;
   final CashierSession? session;
 }
 
@@ -120,6 +124,8 @@ class _PosAppGateState extends State<PosAppGate> {
           _snapshot = PosGateSnapshot(
               state: PosGateState.cashierActive,
               deviceId: current.deviceId,
+              merchantId: current.merchantId,
+              branchId: current.branchId,
               session: result.session);
           _needsPinChangeId = null;
         case CashierLoginStatus.requiresPinChange:
@@ -129,6 +135,8 @@ class _PosAppGateState extends State<PosAppGate> {
           _snapshot = PosGateSnapshot(
             state: PosGateState.offlineCredentialsExpired,
             deviceId: current.deviceId,
+            merchantId: current.merchantId,
+            branchId: current.branchId,
           );
         case CashierLoginStatus.invalidPin || CashierLoginStatus.cooldown:
           break;
@@ -212,6 +220,8 @@ class _PosAppGateState extends State<PosAppGate> {
                   onPressed: () => setState(() => _snapshot = PosGateSnapshot(
                         state: PosGateState.deviceReadyCashierLocked,
                         deviceId: snapshot.deviceId,
+                        merchantId: snapshot.merchantId,
+                        branchId: snapshot.branchId,
                       )),
                   child: const Text('End cashier session')),
             ])));

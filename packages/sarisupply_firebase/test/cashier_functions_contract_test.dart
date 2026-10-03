@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sarisupply_auth/sarisupply_auth.dart';
 import 'package:sarisupply_firebase/sarisupply_firebase.dart';
 
 class _Gateway implements MerchantCallableGateway {
@@ -70,5 +71,39 @@ void main() {
     expect(
         bundle.expiresAt.difference(bundle.issuedAt), const Duration(days: 7));
     expect(device.calls, ['refreshCashierCredentialBundle']);
+  });
+
+  test('offline failure reports use the authenticated device gateway',
+      () async {
+    const eventId = 'offline-event-1234567890';
+    final human = _Gateway({});
+    final device = _Gateway({
+      'acceptedEventIds': [eventId]
+    });
+    final repository =
+        CashierFunctions(humanGateway: human, deviceGateway: device);
+
+    final accepted = await repository.reportOfflinePinFailures([
+      OfflinePinFailureEvent(
+        eventId: eventId,
+        cashierId: 'cashier-1',
+        failedAttempts: 5,
+        occurredAt: DateTime.utc(2026, 9, 28, 12),
+      ),
+    ]);
+
+    expect(accepted, [eventId]);
+    expect(human.calls, isEmpty);
+    expect(device.calls, ['reportOfflinePinFailures']);
+    expect(device.payload, {
+      'events': [
+        {
+          'eventId': eventId,
+          'cashierId': 'cashier-1',
+          'failedAttempts': 5,
+          'occurredAt': '2026-09-28T12:00:00.000Z',
+        }
+      ]
+    });
   });
 }

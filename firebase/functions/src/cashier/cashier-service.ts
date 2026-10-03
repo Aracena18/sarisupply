@@ -120,6 +120,92 @@ export async function setCashierStatus(
   });
 }
 
+type OfflinePinFailure = {
+  eventId: string;
+  cashierId: string;
+  failedAttempts: number;
+  occurredAt: string;
+};
+
+export async function reportOfflinePinFailures(
+  db: Firestore, request: AuthRequest, input: unknown,
+): Promise<{ acceptedEventIds: string[] }> {
+  if (!Array.isArray(input) || input.length === 0 || input.length > 20) {
+    throw new HttpsError('invalid-argument', 'Expected 1 to 20 offline events');
+  }
+  const events: OfflinePinFailure[] = input.map((value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new HttpsError('invalid-argument', 'Invalid offline event');
+    }
+    const event = value as Record<string, unknown>;
+    if (typeof event.eventId !== 'string' ||
+        !/^[A-Za-z0-9_-]{16,80}$/.test(event.eventId) ||
+        !Number.isInteger(event.failedAttempts) ||
+        (event.failedAttempts as number) < 5 ||
+        (event.failedAttempts as number) > 1000 ||
+        typeof event.occurredAt !== 'string' || event.occurredAt.length > 40 ||
+        !Number.isFinite(Date.parse(event.occurredAt))) {
+      throw new HttpsError('invalid-argument', 'Invalid offline event');
+    }
+    return {
+      eventId: event.eventId,
+      cashierId: requireDocumentId(event.cashierId, 'cashier ID'),
+      failedAttempts: event.failedAttempts as number,
+      occurredAt: event.occurredAt,
+    };
+  });
+  if (new Set(events.map((event) => event.eventId)).size !== events.length) {
+    throw new HttpsError('invalid-argument', 'Duplicate offline event IDs');
+  }
+
+  await db.runTransaction(async (tx) => {
+    const device = await activeDeviceInTransaction(db, tx, request);
+    const deviceId = requireDocumentId(request.auth?.token.deviceId, 'device ID');
+    const cashierIds = [...new Set(events.map((event) => event.cashierId))];
+    for (const cashierId of cashierIds) {
+      const cashier = await tx.get(db.doc(cashierPath(device.merchantId, cashierId)));
+      const data = cashier.data();
+      if (data?.merchantId !== device.merchantId ||
+          !Array.isArray(data.assignedBranchIds) ||
+          !data.assignedBranchIds.includes(device.branchId)) throw denied();
+    }
+
+    const refs = events.map((event) => db.doc(
+      `merchants/${device.merchantId}/auditEvents/offline-pin-${deviceId}-${event.eventId}`,
+    ));
+    const snapshots = await Promise.all(refs.map((ref) => tx.get(ref)));
+    events.forEach((event, index) => {
+      const existing = snapshots[index];
+      if (existing.exists) {
+        const details = existing.get('details') as Record<string, unknown>;
+        if (existing.get('actorId') !== deviceId ||
+            existing.get('action') !== 'cashier.offlinePinFailed' ||
+            existing.get('targetId') !== event.cashierId ||
+            details?.failedAttempts !== event.failedAttempts ||
+            details?.reportedDeviceTime !== event.occurredAt) {
+          throw new HttpsError(
+            'already-exists', 'Offline event ID was reused with different data',
+          );
+        }
+        return;
+      }
+      tx.create(refs[index], {
+        merchantId: device.merchantId,
+        actorType: 'device', actorId: deviceId,
+        action: 'cashier.offlinePinFailed', targetType: 'cashier',
+        targetId: event.cashierId, branchId: device.branchId,
+        operationId: event.eventId,
+        details: {
+          failedAttempts: event.failedAttempts,
+          reportedDeviceTime: event.occurredAt,
+        },
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    });
+  });
+  return { acceptedEventIds: events.map((event) => event.eventId) };
+}
+
 type PinCheck = { status: 'ok'; credentialVersion: number; mustChangePin: boolean } |
   { status: 'wrong' | 'locked' };
 

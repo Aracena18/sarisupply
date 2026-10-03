@@ -145,6 +145,9 @@ final class CashierLoginService {
     if (record.cooldownUntil != null && now.isBefore(record.cooldownUntil!)) {
       return const CashierLoginResult(CashierLoginStatus.cooldown);
     }
+    if (!await _store.hasSecurityEventCapacity(_deviceId)) {
+      return const CashierLoginResult(CashierLoginStatus.requiresOnlineRefresh);
+    }
 
     bool matches;
     try {
@@ -183,6 +186,30 @@ final class CashierLoginService {
   Future<void> refreshEnrollment() async {
     final bundle = await _cashiers.refreshCredentialBundle();
     await _applyBundle(bundle);
+  }
+
+  Future<void> syncQueuedSecurityEvents() async {
+    final queued = (await _store.queuedSecurityEvents(_deviceId))
+        .where((event) => event['type'] == 'offline_pin_failed')
+        .toList();
+    for (var start = 0; start < queued.length; start += 20) {
+      final batch = queued
+          .skip(start)
+          .take(20)
+          .map((event) => OfflinePinFailureEvent(
+                eventId: event['eventId'] as String,
+                cashierId: event['cashierId'] as String,
+                failedAttempts: event['failedAttempts'] as int,
+                occurredAt: DateTime.parse(event['occurredAt'] as String),
+              ))
+          .toList();
+      final accepted = await _cashiers.reportOfflinePinFailures(batch);
+      final batchIds = batch.map((event) => event.eventId).toSet();
+      if (!accepted.toSet().containsAll(batchIds)) {
+        throw StateError('Offline security events were not acknowledged');
+      }
+      await _store.acknowledgeSecurityEvents(_deviceId, batchIds.toList());
+    }
   }
 
   Future<void> _applyBundle(CashierCredentialBundle bundle) async {

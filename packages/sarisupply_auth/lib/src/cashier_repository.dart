@@ -58,6 +58,20 @@ final class CashierCredentialBundle {
   final List<CashierCredentialProjection> cashiers;
 }
 
+final class OfflinePinFailureEvent {
+  const OfflinePinFailureEvent({
+    required this.eventId,
+    required this.cashierId,
+    required this.failedAttempts,
+    required this.occurredAt,
+  });
+
+  final String eventId;
+  final String cashierId;
+  final int failedAttempts;
+  final DateTime occurredAt;
+}
+
 abstract interface class CashierRepository {
   Future<IssuedCashierPin> createCashier({
     required String merchantId,
@@ -71,4 +85,6 @@ abstract interface class CashierRepository {
   Future<int> changePin(String cashierId, String currentPin, String newPin);
   Future<IssuedCashierPin> resetPin(String merchantId, String cashierId);
   Future<CashierCredentialBundle> refreshCredentialBundle();
+  Future<List<String>> reportOfflinePinFailures(
+      List<OfflinePinFailureEvent> events);
 }

@@ -5,22 +5,39 @@ import 'package:sarisupply_auth/sarisupply_auth.dart';
 import 'package:sarisupply_firebase/sarisupply_firebase.dart';
 import 'package:sarisupply_models/sarisupply_models.dart';
 
+import '../features/cashier_auth/data/offline_clock_source.dart';
 import '../features/cashier_auth/data/secure_offline_credential_store.dart';
 import '../features/cashier_auth/domain/cashier_login_service.dart';
 import 'pos_app_gate.dart';
 
 final class FirebasePosWorkflow implements PosWorkflow {
-  FirebasePosWorkflow()
-      : _humanAuth = FirebaseAuth.instanceFor(app: Firebase.app()),
-        _deviceAuth = FirebaseAuth.instanceFor(
-            app: Firebase.app(FirebaseBootstrap.deviceAppName)),
-        _humanIdentity = FirebaseGoogleAuthRepository.forDefaultApp(
-          serverClientId: _serverClientId(),
-        ),
-        applications = MerchantApplicationFunctions.forDefaultApp(),
-        memberships = MembershipFunctions.forDefaultApp(),
-        devices = DeviceFunctions.forInitializedApps(),
-        _cashiers = CashierFunctions.forInitializedApps();
+  FirebasePosWorkflow({
+    FirebaseAuth? humanAuth,
+    FirebaseAuth? deviceAuth,
+    AuthRepository? humanIdentity,
+    MerchantApplicationRepository? applications,
+    MembershipRepository? memberships,
+    DeviceRepository? devices,
+    CashierRepository? cashiers,
+    SecureOfflineCredentialStore? store,
+    OfflineClockSource? offlineClock,
+    DateTime Function()? clock,
+  })  : _humanAuth = humanAuth ?? FirebaseAuth.instanceFor(app: Firebase.app()),
+        _deviceAuth = deviceAuth ??
+            FirebaseAuth.instanceFor(
+                app: Firebase.app(FirebaseBootstrap.deviceAppName)),
+        _humanIdentity = humanIdentity ??
+            FirebaseGoogleAuthRepository.forDefaultApp(
+              serverClientId: _serverClientId(),
+            ),
+        applications =
+            applications ?? MerchantApplicationFunctions.forDefaultApp(),
+        memberships = memberships ?? MembershipFunctions.forDefaultApp(),
+        devices = devices ?? DeviceFunctions.forInitializedApps(),
+        _cashiers = cashiers ?? CashierFunctions.forInitializedApps(),
+        _store = store ?? SecureOfflineCredentialStore(),
+        _offlineClock = offlineClock ?? const AndroidOfflineClockSource(),
+        _clock = clock ?? DateTime.now;
 
   static String _serverClientId() {
     const supplied = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
@@ -38,7 +55,9 @@ final class FirebasePosWorkflow implements PosWorkflow {
   final FirebaseAuth _deviceAuth;
   final AuthRepository _humanIdentity;
   final CashierRepository _cashiers;
-  final SecureOfflineCredentialStore _store = SecureOfflineCredentialStore();
+  final SecureOfflineCredentialStore _store;
+  final OfflineClockSource _offlineClock;
+  final DateTime Function() _clock;
   String? _deviceId;
 
   @override
@@ -56,24 +75,66 @@ final class FirebasePosWorkflow implements PosWorkflow {
           ? deviceUser.uid.substring('device:'.length)
           : null;
       if (_deviceId == null) {
+        await _invalidateDeviceAuthorization();
         return const PosGateSnapshot(state: PosGateState.deviceRevoked);
       }
       try {
         final bootstrap = await devices.getBootstrap();
         if (bootstrap.deviceId != _deviceId) {
+          await _invalidateDeviceAuthorization();
           return const PosGateSnapshot(state: PosGateState.deviceRevoked);
         }
+        final verifiedAt = _clock().toUtc();
+        final reading = await _offlineClock.read();
+        await _store.saveDeviceContext(StoredDeviceContext(
+          deviceId: bootstrap.deviceId,
+          merchantId: bootstrap.merchantId,
+          branchId: bootstrap.branchId,
+          verifiedAt: verifiedAt,
+          lastObservedWallClock: verifiedAt,
+          clockAnchor: reading == null
+              ? null
+              : OfflineClockAnchor(
+                  wallClock: verifiedAt,
+                  bootCount: reading.bootCount,
+                  elapsedRealtime: reading.elapsedRealtime,
+                ),
+        ));
+        await _trySyncQueuedSecurityEvents();
         return PosGateSnapshot(
-            state: PosGateState.deviceReadyCashierLocked, deviceId: _deviceId);
+          state: PosGateState.deviceReadyCashierLocked,
+          deviceId: _deviceId,
+          merchantId: bootstrap.merchantId,
+          branchId: bootstrap.branchId,
+        );
       } on FirebaseFunctionsException catch (error) {
         if (error.code == 'permission-denied' ||
             error.code == 'unauthenticated') {
+          await _invalidateDeviceAuthorization();
           return const PosGateSnapshot(state: PosGateState.deviceRevoked);
         }
         if (_isNetworkError(error.code)) {
+          final now = _clock().toUtc();
+          final reading = await _offlineClock.read();
+          final context = await _store.readDeviceContext(_deviceId!);
+          if (context == null ||
+              !context.isUsableAt(OfflineTimeEvidence(
+                now: now,
+                lastObservedWallClock: context.lastObservedWallClock,
+                anchor: context.clockAnchor,
+                reading: reading,
+              ))) {
+            return const PosGateSnapshot(
+                state: PosGateState.offlineCredentialsExpired);
+          }
+          await _store
+              .saveDeviceContext(context.copyWith(lastObservedWallClock: now));
           return PosGateSnapshot(
-              state: PosGateState.deviceReadyCashierLocked,
-              deviceId: _deviceId);
+            state: PosGateState.deviceReadyCashierLocked,
+            deviceId: _deviceId,
+            merchantId: context.merchantId,
+            branchId: context.branchId,
+          );
         }
         rethrow;
       }
@@ -119,6 +180,16 @@ final class FirebasePosWorkflow implements PosWorkflow {
     _deviceId = null;
   }
 
+  Future<void> _invalidateDeviceAuthorization() async {
+    final deviceId = _deviceId;
+    if (deviceId != null) await _store.invalidateDeviceAuthorization(deviceId);
+    try {
+      await _deviceAuth.signOut();
+    } on FirebaseAuthException {
+      // Cached authorization is already gone even if local sign-out fails.
+    }
+  }
+
   CashierLoginService _loginService() {
     final id = _deviceId;
     if (id == null) throw StateError('This tablet is not activated');
@@ -131,11 +202,22 @@ final class FirebasePosWorkflow implements PosWorkflow {
       code == 'deadline-exceeded' ||
       code == 'network-request-failed';
 
+  Future<void> _trySyncQueuedSecurityEvents() async {
+    try {
+      await _loginService().syncQueuedSecurityEvents();
+    } on Object {
+      // Sync failures, including malformed acknowledgements, retain pending
+      // events and cannot undo successful bootstrap or online authentication.
+    }
+  }
+
   @override
   Future<CashierLoginResult> loginCashier(String cashierId, String pin) async {
     final service = _loginService();
     try {
-      return await service.loginOnline(cashierId, pin);
+      final result = await service.loginOnline(cashierId, pin);
+      await _trySyncQueuedSecurityEvents();
+      return result;
     } on FirebaseFunctionsException catch (error) {
       if (!_isNetworkError(error.code)) rethrow;
       return service.loginOffline(cashierId, pin);
@@ -146,6 +228,8 @@ final class FirebasePosWorkflow implements PosWorkflow {
   Future<CashierLoginResult> changePin(
       String cashierId, String currentPin, String newPin) async {
     await _cashiers.changePin(cashierId, currentPin, newPin);
-    return _loginService().loginOnline(cashierId, newPin);
+    final result = await _loginService().loginOnline(cashierId, newPin);
+    await _trySyncQueuedSecurityEvents();
+    return result;
   }
 }

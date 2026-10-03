@@ -29,6 +29,20 @@ class _Cashiers extends Fake implements CashierRepository {
   bool mustChangePin = false;
   int version = 1;
   DateTime now = DateTime.utc(2026, 9, 27);
+  bool reportFails = false;
+  bool partialReport = false;
+  List<OfflinePinFailureEvent> reported = [];
+  final batchSizes = <int>[];
+
+  @override
+  Future<List<String>> reportOfflinePinFailures(
+      List<OfflinePinFailureEvent> events) async {
+    if (reportFails) throw StateError('Upload failed');
+    batchSizes.add(events.length);
+    reported = [...reported, ...events];
+    if (partialReport) return [events.first.eventId];
+    return events.map((event) => event.eventId).toList();
+  }
 
   @override
   Future<CashierPinVerification> verifyPin(String cashierId, String pin) async {
@@ -186,6 +200,233 @@ void main() {
         occurredAt: now);
     await store.deleteForDevice('device-1');
     expect(await store.read('device-1', 'cashier-1'), isNull);
+    expect(await store.queuedSecurityEvents('device-1'), isEmpty);
+  });
+
+  test('retains queued events and refuses to silently overflow the queue',
+      () async {
+    for (var attempt = 0; attempt < 200; attempt++) {
+      await store.queueFailedAttempt(
+        deviceId: 'device-1',
+        cashierId: 'cashier-1',
+        failedAttempts: attempt + 5,
+        occurredAt: now.add(Duration(seconds: attempt)),
+      );
+    }
+
+    await expectLater(
+      store.queueFailedAttempt(
+        deviceId: 'device-1',
+        cashierId: 'cashier-1',
+        failedAttempts: 205,
+        occurredAt: now.add(const Duration(seconds: 200)),
+      ),
+      throwsStateError,
+    );
+    final events = await store.queuedSecurityEvents('device-1');
+    expect(events, hasLength(200));
+    expect(events.map((event) => event['eventId']).toSet(), hasLength(200));
+  });
+
+  test('a full security queue requires refresh before another offline PIN',
+      () async {
+    await service.loginOnline('cashier-1', '123456');
+    for (var attempt = 0; attempt < 200; attempt++) {
+      await store.queueFailedAttempt(
+        deviceId: 'device-1',
+        cashierId: 'cashier-1',
+        failedAttempts: attempt + 5,
+        occurredAt: now.add(Duration(seconds: attempt)),
+      );
+    }
+
+    expect((await service.loginOffline('cashier-1', '000000')).status,
+        CashierLoginStatus.requiresOnlineRefresh);
+    expect((await store.queuedSecurityEvents('device-1')), hasLength(200));
+    expect((await store.read('device-1', 'cashier-1'))?.failedAttempts, 0);
+  });
+
+  test('legacy queued events receive a stable id before upload', () async {
+    keys.values['offline-events:device-1'] = jsonEncode([
+      {
+        'type': 'offline_pin_failed',
+        'cashierId': 'cashier-1',
+        'failedAttempts': 5,
+        'occurredAt': now.toIso8601String(),
+      }
+    ]);
+
+    final firstRead = await store.queuedSecurityEvents('device-1');
+    final secondRead = await store.queuedSecurityEvents('device-1');
+
+    expect(firstRead.single['eventId'], isA<String>());
+    expect(secondRead.single['eventId'], firstRead.single['eventId']);
+  });
+
+  test('resumes an interrupted legacy event migration without duplication',
+      () async {
+    const eventId = 'legacy-event-1234567890';
+    final event = {
+      'type': 'offline_pin_failed',
+      'eventId': eventId,
+      'cashierId': 'cashier-1',
+      'failedAttempts': 5,
+      'occurredAt': now.toIso8601String(),
+    };
+    keys.values['offline-events:device-1'] = jsonEncode([event]);
+    keys.values['offline-event:device-1:$eventId'] = jsonEncode(event);
+
+    final queued = await store.queuedSecurityEvents('device-1');
+
+    expect(queued, hasLength(1));
+    expect(queued.single['eventId'], eventId);
+    expect(keys.values, isNot(contains('offline-events:device-1')));
+  });
+
+  test('failed event uploads stay queued and are removed after acknowledgement',
+      () async {
+    await store.queueFailedAttempt(
+      deviceId: 'device-1',
+      cashierId: 'cashier-1',
+      failedAttempts: 5,
+      occurredAt: now,
+    );
+    final eventId = (await store.queuedSecurityEvents('device-1'))
+        .single['eventId']! as String;
+    server.reportFails = true;
+
+    await expectLater(service.syncQueuedSecurityEvents(), throwsStateError);
+    expect(await store.queuedSecurityEvents('device-1'), hasLength(1));
+
+    server.reportFails = false;
+    await service.syncQueuedSecurityEvents();
+    expect(server.reported.single.eventId, eventId);
+    expect(server.reported.single.cashierId, 'cashier-1');
+    expect(await store.queuedSecurityEvents('device-1'), isEmpty);
+  });
+
+  test(
+      'offline event uploads stay queued when the server acknowledges only part',
+      () async {
+    for (var attempt = 0; attempt < 2; attempt++) {
+      await store.queueFailedAttempt(
+        deviceId: 'device-1',
+        cashierId: 'cashier-1',
+        failedAttempts: attempt + 5,
+        occurredAt: now.add(Duration(seconds: attempt)),
+      );
+    }
+    server.partialReport = true;
+
+    await expectLater(service.syncQueuedSecurityEvents(), throwsStateError);
+    expect(await store.queuedSecurityEvents('device-1'), hasLength(2));
+  });
+
+  for (final corruption in <String, Object?>{
+    'cashierId': 123,
+    'failedAttempts': 'five',
+    'occurredAt': 'not-a-date',
+    'type': 'unknown',
+  }.entries) {
+    test('malformed ${corruption.key} stays quarantined and blocks offline PIN',
+        () async {
+      await service.loginOnline('cashier-1', '123456');
+      const key = 'offline-event:device-1:corrupt-event-12345678';
+      final encoded = jsonEncode({
+        'type': 'offline_pin_failed',
+        'eventId': 'corrupt-event-12345678',
+        'cashierId': 'cashier-1',
+        'failedAttempts': 5,
+        'occurredAt': now.toIso8601String(),
+        corruption.key: corruption.value,
+      });
+      keys.values[key] = encoded;
+      await service.syncQueuedSecurityEvents();
+      expect(server.reported, isEmpty);
+      expect(await store.queuedSecurityEvents('device-1'), isEmpty);
+      expect(keys.values[key], encoded);
+      expect((await service.loginOffline('cashier-1', '123456')).status,
+          CashierLoginStatus.requiresOnlineRefresh);
+    });
+  }
+
+  test('malformed legacy records stay intact without blocking online sync',
+      () async {
+    const key = 'offline-events:device-1';
+    final encoded = jsonEncode([
+      {
+        'type': 'offline_pin_failed',
+        'cashierId': 123,
+        'failedAttempts': 5,
+        'occurredAt': now.toIso8601String(),
+      }
+    ]);
+    keys.values[key] = encoded;
+    await service.syncQueuedSecurityEvents();
+    expect(keys.values[key], encoded);
+    expect(server.reported, isEmpty);
+    expect(await store.hasSecurityEventCapacity('device-1'), isFalse);
+  });
+
+  test('legacy migration cannot acknowledge a colliding quarantined record',
+      () async {
+    const eventId = 'colliding-event-12345678';
+    const key = 'offline-event:device-1:$eventId';
+    final valid = {
+      'type': 'offline_pin_failed',
+      'eventId': eventId,
+      'cashierId': 'cashier-1',
+      'failedAttempts': 5,
+      'occurredAt': now.toIso8601String(),
+    };
+    final corrupt = jsonEncode({...valid, 'cashierId': 123});
+    keys.values[key] = corrupt;
+    keys.values['offline-events:device-1'] = jsonEncode([valid]);
+    await service.syncQueuedSecurityEvents();
+    expect(server.reported.single.eventId, isNot(eventId));
+    expect(server.reported.single.cashierId, 'cashier-1');
+    expect(keys.values[key], corrupt);
+    expect(await store.hasSecurityEventCapacity('device-1'), isFalse);
+  });
+
+  test('healthy events sync while a malformed record remains quarantined',
+      () async {
+    await store.queueFailedAttempt(
+        deviceId: 'device-1',
+        cashierId: 'cashier-1',
+        failedAttempts: 5,
+        occurredAt: now);
+    final healthyId =
+        (await store.queuedSecurityEvents('device-1')).single['eventId'];
+    const key = 'offline-event:device-1:corrupt-event-12345678';
+    final encoded = jsonEncode({
+      'type': 'offline_pin_failed',
+      'eventId': 'corrupt-event-12345678',
+      'cashierId': 123,
+      'failedAttempts': 5,
+      'occurredAt': now.toIso8601String(),
+    });
+    keys.values[key] = encoded;
+    await service.syncQueuedSecurityEvents();
+    expect(server.reported.single.eventId, healthyId);
+    expect(await store.queuedSecurityEvents('device-1'), isEmpty);
+    expect(keys.values[key], encoded);
+    expect(await store.hasSecurityEventCapacity('device-1'), isFalse);
+  });
+
+  test('offline event uploads respect the server batch size', () async {
+    for (var attempt = 0; attempt < 23; attempt++) {
+      await store.queueFailedAttempt(
+        deviceId: 'device-1',
+        cashierId: 'cashier-1',
+        failedAttempts: attempt + 5,
+        occurredAt: now.add(Duration(seconds: attempt)),
+      );
+    }
+
+    await service.syncQueuedSecurityEvents();
+
+    expect(server.batchSizes, [20, 3]);
     expect(await store.queuedSecurityEvents('device-1'), isEmpty);
   });
 }
