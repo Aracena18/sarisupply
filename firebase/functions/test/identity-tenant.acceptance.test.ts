@@ -89,7 +89,7 @@ describe('identity and tenant acceptance', () => {
     }]);
     expect(JSON.stringify(bundle)).not.toContain('hash');
     expect(JSON.stringify(bundle)).not.toContain('salt');
-  });
+  }, 15_000); // Cold emulators plus the complete real PIN-KDF flow.
 
   it('keeps a Manager scoped to Branch A and forbids Manager invitations', async () => {
     const { owner, merchantId, branchId } = await approvedMerchant();
@@ -197,6 +197,85 @@ describe('identity and tenant acceptance', () => {
       failedAttempts: 5,
       occurredAt: '2026-09-28T12:00:00.000Z',
     }])).rejects.toMatchObject({ code: 'permission-denied' });
+  });
+
+  it('rejects same-merchant cross-branch reports without writing any batch audit', async () => {
+    const { owner, merchantId, branchId } = await approvedMerchant();
+    const second = await createBranch(db, owner.request, {
+      merchantId, name: 'Second', code: 'SECOND', address: 'Davao',
+      operationId: 'second-branch',
+    });
+    const activated = await activatePosDevice(db, mint, owner.request, {
+      merchantId, branchId, displayName: 'Branch A tablet', platform: 'android',
+      appVersion: '0.1.0', operationId: 'activate-1',
+    });
+    const device = { auth: { uid: `device:${activated.deviceId}`, token: {
+      principalType: 'device', merchantId, deviceId: activated.deviceId,
+    } } };
+    const local = await createCashier(db, hasher, owner.request, {
+      merchantId, displayName: 'Local', employeeCode: 'EMP-A',
+      assignedBranchIds: [branchId],
+    });
+    const other = await createCashier(db, hasher, owner.request, {
+      merchantId, displayName: 'Other', employeeCode: 'EMP-B',
+      assignedBranchIds: [second.branchId],
+    });
+    const events = [local, other].map((cashier, index) => ({
+      eventId: `cross-branch-event-123456-${index}`, cashierId: cashier.cashierId,
+      failedAttempts: 5, occurredAt: '2026-09-28T12:00:00.000Z',
+    }));
+    await expect(reportOfflinePinFailures(db, device, events))
+      .rejects.toMatchObject({ code: 'permission-denied' });
+    expect((await db.collection(`merchants/${merchantId}/auditEvents`)
+      .where('action', '==', 'cashier.offlinePinFailed').get()).size).toBe(0);
+  });
+
+  it('rejects delayed reports after a cashier is reassigned out of the device branch', async () => {
+    const { owner, merchantId, branchId } = await approvedMerchant();
+    const second = await createBranch(db, owner.request, {
+      merchantId, name: 'Second', code: 'SECOND', address: 'Davao',
+      operationId: 'second-branch',
+    });
+    const activated = await activatePosDevice(db, mint, owner.request, {
+      merchantId, branchId, displayName: 'Branch A tablet', platform: 'android',
+      appVersion: '0.1.0', operationId: 'activate-1',
+    });
+    const device = { auth: { uid: `device:${activated.deviceId}`, token: {
+      principalType: 'device', merchantId, deviceId: activated.deviceId,
+    } } };
+    const cashier = await createCashier(db, hasher, owner.request, {
+      merchantId, displayName: 'Ana', employeeCode: 'EMP-1', assignedBranchIds: [branchId],
+    });
+    await db.doc(`merchants/${merchantId}/cashiers/${cashier.cashierId}`)
+      .update({ assignedBranchIds: [second.branchId] });
+    await expect(reportOfflinePinFailures(db, device, [{
+      eventId: 'reassigned-event-12345678', cashierId: cashier.cashierId,
+      failedAttempts: 5, occurredAt: '2026-09-28T12:00:00.000Z',
+    }])).rejects.toMatchObject({ code: 'permission-denied' });
+    expect((await db.collection(`merchants/${merchantId}/auditEvents`)
+      .where('action', '==', 'cashier.offlinePinFailed').get()).size).toBe(0);
+  });
+
+  it('accepts historical failures for a suspended cashier still assigned to the branch', async () => {
+    const { owner, merchantId, branchId } = await approvedMerchant();
+    const activated = await activatePosDevice(db, mint, owner.request, {
+      merchantId, branchId, displayName: 'Branch A tablet', platform: 'android',
+      appVersion: '0.1.0', operationId: 'activate-1',
+    });
+    const device = { auth: { uid: `device:${activated.deviceId}`, token: {
+      principalType: 'device', merchantId, deviceId: activated.deviceId,
+    } } };
+    const cashier = await createCashier(db, hasher, owner.request, {
+      merchantId, displayName: 'Ana', employeeCode: 'EMP-1', assignedBranchIds: [branchId],
+    });
+    await db.doc(`merchants/${merchantId}/cashiers/${cashier.cashierId}`)
+      .update({ status: 'suspended' });
+    const event = { eventId: 'suspended-event-12345678', cashierId: cashier.cashierId,
+      failedAttempts: 5, occurredAt: '2026-09-28T12:00:00.000Z' };
+    expect(await reportOfflinePinFailures(db, device, [event]))
+      .toEqual({ acceptedEventIds: [event.eventId] });
+    expect((await db.collection(`merchants/${merchantId}/auditEvents`)
+      .where('action', '==', 'cashier.offlinePinFailed').get()).size).toBe(1);
   });
 
   it('retries approval, invitation, and activation without duplicate effects', async () => {

@@ -228,6 +228,25 @@ final class SecureOfflineCredentialStore {
   static bool _isEventId(Object? value) =>
       value is String && RegExp(r'^[A-Za-z0-9_-]{16,80}$').hasMatch(value);
 
+  static bool _hasValidEventPayload(Map<String, Object?> event) {
+    final cashierId = event['cashierId'];
+    final attempts = event['failedAttempts'];
+    final occurredAt = event['occurredAt'];
+    return event['type'] == 'offline_pin_failed' &&
+        cashierId is String &&
+        cashierId.isNotEmpty &&
+        cashierId.length <= 128 &&
+        !cashierId.contains('/') &&
+        cashierId != '.' &&
+        cashierId != '..' &&
+        attempts is int &&
+        attempts >= 5 &&
+        attempts <= 1000 &&
+        occurredAt is String &&
+        occurredAt.length <= 40 &&
+        DateTime.tryParse(occurredAt) != null;
+  }
+
   static bool _sameEvent(
       Map<String, Object?> left, Map<String, Object?> right) {
     if (left.length != right.length) return false;
@@ -268,13 +287,20 @@ final class SecureOfflineCredentialStore {
   Future<void> delete(String deviceId, String cashierId) =>
       _keys.delete(_credentialKey(deviceId, cashierId));
 
-  Future<void> deleteForDevice(String deviceId) async {
-    final records = await listForDevice(deviceId);
-    for (final record in records) {
-      await delete(deviceId, record.cashierId);
-    }
-    await clearQueuedSecurityEvents(deviceId);
+  /// Remove offline authorization while preserving pending audit evidence.
+  Future<void> invalidateDeviceAuthorization(String deviceId) async {
+    // Invalidate the bootstrap anchor before any potentially corrupt credential.
     await _keys.delete(_contextKey(deviceId));
+    final entries = await _keys.readAll();
+    final prefix = 'offline-credential:$deviceId:';
+    for (final key in entries.keys.where((key) => key.startsWith(prefix))) {
+      await _keys.delete(key);
+    }
+  }
+
+  Future<void> deleteForDevice(String deviceId) async {
+    await invalidateDeviceAuthorization(deviceId);
+    await clearQueuedSecurityEvents(deviceId);
   }
 
   Future<StoredDeviceContext?> readDeviceContext(String deviceId) async {
@@ -341,8 +367,9 @@ final class SecureOfflineCredentialStore {
   }
 
   Future<bool> hasSecurityEventCapacity(String deviceId) async {
+    List<Map<String, Object?>> validEvents;
     try {
-      await queuedSecurityEvents(deviceId);
+      validEvents = await queuedSecurityEvents(deviceId);
     } on Object {
       return false;
     }
@@ -350,7 +377,8 @@ final class SecureOfflineCredentialStore {
     if (entries.containsKey(_legacyEventsKey(deviceId))) return false;
     final prefix = _eventPrefix(deviceId);
     final count = entries.keys.where((key) => key.startsWith(prefix)).length;
-    return count < maxQueuedSecurityEvents;
+    // A quarantined record occupies capacity and requires online recovery.
+    return validEvents.length == count && count < maxQueuedSecurityEvents;
   }
 
   Future<List<Map<String, Object?>>> queuedSecurityEvents(
@@ -364,7 +392,8 @@ final class SecureOfflineCredentialStore {
       try {
         final event = Map<String, Object?>.from(jsonDecode(entry.value) as Map);
         final eventId = event['eventId'];
-        if (_isEventId(eventId) &&
+        if (_hasValidEventPayload(event) &&
+            _isEventId(eventId) &&
             entry.key == _eventKey(deviceId, eventId as String)) {
           events.add(event);
         }
@@ -378,19 +407,34 @@ final class SecureOfflineCredentialStore {
     final legacyKey = _legacyEventsKey(deviceId);
     final legacyEncoded = entries[legacyKey];
     if (legacyEncoded != null) {
-      final legacyEvents = (jsonDecode(legacyEncoded) as List)
-          .map((event) => Map<String, Object?>.from(event as Map))
-          .toList();
+      List<Map<String, Object?>> legacyEvents;
+      try {
+        legacyEvents = (jsonDecode(legacyEncoded) as List)
+            .map((event) => Map<String, Object?>.from(event as Map))
+            .toList();
+        if (!legacyEvents.every(_hasValidEventPayload)) return events;
+      } on FormatException {
+        return events;
+      } on TypeError {
+        return events;
+      }
+      // Leave corrupt legacy payloads untouched; never migrate or acknowledge them.
       final eventsById = <String, Map<String, Object?>>{
         for (final event in events) event['eventId']! as String: event,
       };
-      final usedIds = eventsById.keys.toSet();
+      final usedIds = {
+        ...eventsById.keys,
+        ...entries.keys
+            .where((key) => key.startsWith(prefix))
+            .map((key) => key.substring(prefix.length)),
+      };
       final legacyIds = <String>{};
       for (final event in legacyEvents) {
         var eventId = event['eventId'];
         final existing = _isEventId(eventId) ? eventsById[eventId] : null;
         if (!_isEventId(eventId) ||
             legacyIds.contains(eventId) ||
+            (existing == null && usedIds.contains(eventId)) ||
             (existing != null && !_sameEvent(existing, event))) {
           eventId = _newEventId();
           while (usedIds.contains(eventId) || legacyIds.contains(eventId)) {

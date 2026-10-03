@@ -164,7 +164,10 @@ export async function reportOfflinePinFailures(
     const cashierIds = [...new Set(events.map((event) => event.cashierId))];
     for (const cashierId of cashierIds) {
       const cashier = await tx.get(db.doc(cashierPath(device.merchantId, cashierId)));
-      if (cashier.data()?.merchantId !== device.merchantId) throw denied();
+      const data = cashier.data();
+      if (data?.merchantId !== device.merchantId ||
+          !Array.isArray(data.assignedBranchIds) ||
+          !data.assignedBranchIds.includes(device.branchId)) throw denied();
     }
 
     const refs = events.map((event) => db.doc(

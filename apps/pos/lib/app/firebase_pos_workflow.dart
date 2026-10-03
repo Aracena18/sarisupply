@@ -75,11 +75,13 @@ final class FirebasePosWorkflow implements PosWorkflow {
           ? deviceUser.uid.substring('device:'.length)
           : null;
       if (_deviceId == null) {
+        await _invalidateDeviceAuthorization();
         return const PosGateSnapshot(state: PosGateState.deviceRevoked);
       }
       try {
         final bootstrap = await devices.getBootstrap();
         if (bootstrap.deviceId != _deviceId) {
+          await _invalidateDeviceAuthorization();
           return const PosGateSnapshot(state: PosGateState.deviceRevoked);
         }
         final verifiedAt = _clock().toUtc();
@@ -108,6 +110,7 @@ final class FirebasePosWorkflow implements PosWorkflow {
       } on FirebaseFunctionsException catch (error) {
         if (error.code == 'permission-denied' ||
             error.code == 'unauthenticated') {
+          await _invalidateDeviceAuthorization();
           return const PosGateSnapshot(state: PosGateState.deviceRevoked);
         }
         if (_isNetworkError(error.code)) {
@@ -177,6 +180,16 @@ final class FirebasePosWorkflow implements PosWorkflow {
     _deviceId = null;
   }
 
+  Future<void> _invalidateDeviceAuthorization() async {
+    final deviceId = _deviceId;
+    if (deviceId != null) await _store.invalidateDeviceAuthorization(deviceId);
+    try {
+      await _deviceAuth.signOut();
+    } on FirebaseAuthException {
+      // Cached authorization is already gone even if local sign-out fails.
+    }
+  }
+
   CashierLoginService _loginService() {
     final id = _deviceId;
     if (id == null) throw StateError('This tablet is not activated');
@@ -192,8 +205,9 @@ final class FirebasePosWorkflow implements PosWorkflow {
   Future<void> _trySyncQueuedSecurityEvents() async {
     try {
       await _loginService().syncQueuedSecurityEvents();
-    } on Exception {
-      // An upload failure does not discard events or block POS recovery.
+    } on Object {
+      // Sync failures, including malformed acknowledgements, retain pending
+      // events and cannot undo successful bootstrap or online authentication.
     }
   }
 
