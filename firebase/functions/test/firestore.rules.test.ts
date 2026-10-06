@@ -145,3 +145,20 @@ describe('Firestore authorization rules', () => {
     await assertFails(getDoc(doc(db, 'merchants/merchant-1/managerInvites/invite-1')));
   });
 });
+
+describe('server-only inventory boundaries', () => {
+  it('denies direct catalog, registry, feed, ledger and outbox access to every client role', async () => {
+    const contexts = [environment.unauthenticatedContext(), environment.authenticatedContext('owner-1'),
+      environment.authenticatedContext('manager-1'), environment.authenticatedContext('device:1', { principalType:'device',merchantId:'merchant-1',deviceId:'1' }),
+      environment.authenticatedContext('admin-1', { sarisupplyAdmin:true })];
+    for (const ctx of contexts) for (const path of ['merchants/merchant-1/products/p', 'merchants/merchant-1/skuRegistry/SKU',
+      'merchants/merchant-1/barcodeRegistry/code', 'merchants/merchant-1/catalogChanges/0000000001',
+      'merchants/merchant-1/catalogOperations/op', 'merchants/merchant-1/branches/branch-a/stock/p',
+      'merchants/merchant-1/branches/branch-a/stockChanges/0000000001', 'merchants/merchant-1/branches/branch-a/stockOperations/op',
+      'merchants/merchant-1/cashierGrants/grant', 'merchants/merchant-1/branches/branch-a/checkoutOperations/sale',
+      'merchants/merchant-1/branches/branch-a/checkoutShifts/shift', 'merchants/merchant-1/branches/branch-a/checkoutDevices/device']) {
+      await assertFails(getDoc(doc(ctx.firestore(), path)));
+      await assertFails(setDoc(doc(ctx.firestore(), path), {quantity:1}));
+    }
+  });
+});

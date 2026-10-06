@@ -1,9 +1,10 @@
-import 'package:cloud_functions/cloud_functions.dart';
+import 'package:sarisupply_models/sarisupply_models.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
 
 import '../bootstrap/firebase_bootstrap.dart';
 import 'merchant_application_functions.dart';
+import 'https_merchant_gateway.dart';
 
 final class CashierFunctions implements CashierRepository {
   CashierFunctions({
@@ -16,13 +17,8 @@ final class CashierFunctions implements CashierRepository {
     final humanApp = Firebase.app();
     final deviceApp = Firebase.app(FirebaseBootstrap.deviceAppName);
     return CashierFunctions(
-      humanGateway: FirebaseMerchantCallableGateway(
-        FirebaseFunctions.instanceFor(app: humanApp, region: 'asia-southeast1'),
-      ),
-      deviceGateway: FirebaseMerchantCallableGateway(
-        FirebaseFunctions.instanceFor(
-            app: deviceApp, region: 'asia-southeast1'),
-      ),
+      humanGateway: HttpsMerchantGateway.forApp(humanApp),
+      deviceGateway: HttpsMerchantGateway.forApp(deviceApp),
     );
   }
 
@@ -38,12 +34,14 @@ final class CashierFunctions implements CashierRepository {
 
   @override
   Future<IssuedCashierPin> createCashier({
+    String? operationId,
     required String merchantId,
     required String displayName,
     required String employeeCode,
     required List<String> assignedBranchIds,
   }) async =>
       _issued(await _humanGateway.call('createCashier', {
+        if (operationId != null) 'operationId': operationId,
         'merchantId': merchantId,
         'displayName': displayName,
         'employeeCode': employeeCode,
@@ -70,6 +68,10 @@ final class CashierFunctions implements CashierRepository {
       cashierId: result['cashierId'] as String,
       credentialVersion: result['credentialVersion'] as int,
       mustChangePin: result['mustChangePin'] as bool,
+      grant: result['grant'] == null
+          ? null
+          : IssuedCashierGrant.fromMap(
+              Map<String, Object?>.from(result['grant'] as Map)),
     );
   }
 

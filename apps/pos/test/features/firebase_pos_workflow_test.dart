@@ -3,7 +3,11 @@ import 'dart:convert';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
+import 'package:sarisupply_models/sarisupply_models.dart';
+import 'package:sarisupply_firebase/sarisupply_firebase.dart';
 import 'package:sarisupply_pos/app/firebase_pos_workflow.dart';
 import 'package:sarisupply_pos/app/pos_app_gate.dart';
 import 'package:sarisupply_pos/features/cashier_auth/data/offline_clock_source.dart';
@@ -82,11 +86,14 @@ class _ClockSource implements OfflineClockSource {
 
 class _HumanIdentity extends Fake implements AuthRepository {}
 
+class _DeviceSession extends Fake implements DeviceTokenSession {}
+
 class _Applications extends Fake implements MerchantApplicationRepository {}
 
 class _Memberships extends Fake implements MembershipRepository {}
 
 class _Cashiers extends Fake implements CashierRepository {
+  bool rosterOffline = false;
   bool partialAcknowledgement = false;
 
   @override
@@ -100,25 +107,42 @@ class _Cashiers extends Fake implements CashierRepository {
   Future<CashierPinVerification> verifyPin(
           String cashierId, String pin) async =>
       CashierPinVerification(
-          cashierId: cashierId, credentialVersion: 1, mustChangePin: false);
+          cashierId: cashierId,
+          credentialVersion: 1,
+          mustChangePin: false,
+          grant: IssuedCashierGrant(
+              scope: CheckoutScope(
+                  merchantId: 'merchant-1',
+                  branchId: 'branch-a',
+                  deviceId: 'device-1',
+                  cashierId: cashierId,
+                  grantId: 'grant-1',
+                  credentialVersion: 1),
+              secret: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+              issuedAt: DateTime.utc(2026, 9, 28),
+              expiresAt: DateTime.utc(2026, 10, 5)));
 
   @override
-  Future<CashierCredentialBundle> refreshCredentialBundle() async =>
-      CashierCredentialBundle(
-          merchantId: 'merchant-1',
-          branchId: 'branch-a',
-          issuedAt: DateTime.utc(2026, 9, 28),
-          expiresAt: DateTime.utc(2026, 10, 5),
-          cashiers: [
-            CashierCredentialProjection(
-                cashierId: 'cashier-1',
-                displayName: 'Ana',
-                employeeCode: 'EMP-1',
-                status: 'active',
-                assignedBranchIds: ['branch-a'],
-                mustChangePin: false,
-                credentialVersion: 1)
-          ]);
+  Future<CashierCredentialBundle> refreshCredentialBundle() async {
+    if (rosterOffline) {
+      throw FirebaseFunctionsException(code: 'unavailable', message: 'Offline');
+    }
+    return CashierCredentialBundle(
+        merchantId: 'merchant-1',
+        branchId: 'branch-a',
+        issuedAt: DateTime.utc(2026, 9, 28),
+        expiresAt: DateTime.utc(2026, 10, 5),
+        cashiers: [
+          CashierCredentialProjection(
+              cashierId: 'cashier-1',
+              displayName: 'Ana',
+              employeeCode: 'EMP-1',
+              status: 'active',
+              assignedBranchIds: ['branch-a'],
+              mustChangePin: false,
+              credentialVersion: 1)
+        ]);
+  }
 }
 
 void main() {
@@ -154,6 +178,74 @@ void main() {
     );
   });
 
+  test(
+      'blocked bootstrap retains verification recovery instead of blaming internet',
+      () async {
+    devices.error = FirebaseFunctionsException(
+        code: 'unavailable', message: 'App verification unavailable');
+    final snapshot = await workflow.load();
+    expect(snapshot.state, PosGateState.offlineCredentialsExpired);
+    expect(snapshot.recoveryMessage,
+        'App verification failed. Retry or contact your administrator.');
+    expect(deviceAuth.currentUser, isNotNull);
+  });
+
+  test('financial authorization rechecks current session, clock and version',
+      () async {
+    await workflow.load();
+    final session =
+        (await workflow.loginCashier('cashier-1', '123456')).session!;
+    expect(
+        (await workflow.authorizeCheckout(session)).scope.grantId, 'grant-1');
+    offlineClock.available = false;
+    await expectLater(workflow.authorizeCheckout(session), throwsStateError);
+    offlineClock.available = true;
+    offlineClock.bootCount++;
+    await expectLater(workflow.authorizeCheckout(session), throwsStateError);
+    offlineClock.bootCount--;
+    now = now.add(const Duration(days: 7));
+    offlineClock.elapsedRealtime += const Duration(days: 7);
+    await expectLater(workflow.authorizeCheckout(session), throwsStateError);
+    now = DateTime.utc(2026, 9, 28, 12);
+    offlineClock.elapsedRealtime = const Duration(hours: 2);
+    final credential = await store.read('device-1', 'cashier-1');
+    await keys.write('offline-credential:device-1:cashier-1',
+        jsonEncode({...credential!.toMap(), 'credentialVersion': 2}));
+    await expectLater(workflow.authorizeCheckout(session), throwsStateError);
+    await store.save(credential);
+    workflow.lockCashier();
+    await expectLater(workflow.authorizeCheckout(session), throwsStateError);
+    expect(await store.readCheckoutGrant('device-1', 'grant-1'), isNotNull);
+  });
+  test(
+      'observed grant denial removes active offline authority, retaining upload secret',
+      () async {
+    await workflow.load();
+    final session =
+        (await workflow.loginCashier('cashier-1', '123456')).session!;
+    await workflow.invalidateCheckoutAuthorization(session);
+    await expectLater(workflow.authorizeCheckout(session), throwsStateError);
+    expect(await store.read('device-1', 'cashier-1'), isNull);
+    expect(await store.activeCheckoutGrant('device-1', 'cashier-1'), isNull);
+    expect(await store.readCheckoutGrant('device-1', 'grant-1'), isNotNull);
+    // An old screen's denial must not invalidate a freshly signed-in cashier.
+    final renewed =
+        (await workflow.loginCashier('cashier-1', '123456')).session!;
+    await workflow.invalidateCheckoutAuthorization(session);
+    expect(
+        (await workflow.authorizeCheckout(renewed)).scope.grantId, 'grant-1');
+  });
+  test('legacy credentials and revoked devices cannot authorize payment',
+      () async {
+    await workflow.load();
+    final session =
+        (await workflow.loginCashier('cashier-1', '123456')).session!;
+    await store.invalidateDeviceAuthorization('device-1');
+    await expectLater(workflow.authorizeCheckout(session), throwsStateError);
+    expect(await store.readCheckoutGrant('device-1', 'grant-1'), isNotNull);
+    await workflow.clearDeviceSession();
+    await expectLater(workflow.authorizeCheckout(session), throwsStateError);
+  });
   test('online bootstrap persists trusted merchant and branch context',
       () async {
     final snapshot = await workflow.load();
@@ -166,6 +258,24 @@ void main() {
     expect(context?.verifiedAt, now);
     expect(context?.clockAnchor?.bootCount, 19);
     expect(context?.clockAnchor?.elapsedRealtime, const Duration(hours: 2));
+  });
+  test(
+      'cached roster is display-only, bounded by gate and cleared on revocation',
+      () async {
+    await workflow.load();
+    expect((await workflow.listCashiers()).single.displayName, 'Ana');
+    cashiers.rosterOffline = true;
+    expect((await workflow.listCashiers()).single.cashierId, 'cashier-1');
+    devices.error =
+        FirebaseFunctionsException(code: 'unavailable', message: 'Offline');
+    now = now.add(const Duration(days: 8));
+    offlineClock.elapsedRealtime += const Duration(days: 8);
+    expect(
+        (await workflow.load()).state, PosGateState.offlineCredentialsExpired);
+    devices.error = FirebaseFunctionsException(
+        code: 'permission-denied', message: 'Revoked');
+    expect((await workflow.load()).state, PosGateState.deviceRevoked);
+    expect(await store.readRoster('device-1'), isEmpty);
   });
 
   test('offline bootstrap restores context only within the trusted window',
@@ -199,6 +309,73 @@ void main() {
     expect(
         (await workflow.load()).state, PosGateState.offlineCredentialsExpired);
   });
+
+  for (final missingAttestation in [false, true]) {
+    test(
+        'HTTPS attestation failure preserves offline context '
+        '(missing=$missingAttestation), then revocation clears it', () async {
+      var revoked = false;
+      final gateway = HttpsMerchantGateway(
+        endpoint: Uri.parse('https://api.example.test'),
+        environment: SariSupplyEnvironment.dev,
+        idToken: () async => 'device-token',
+        appCheckToken: () async =>
+            missingAttestation && !revoked ? null : 'attestation',
+        client: MockClient((request) async => http.Response(
+            jsonEncode({
+              'error': {
+                'code': revoked ? 'permission-denied' : 'unavailable',
+                'message':
+                    revoked ? 'Device revoked' : 'App verification unavailable',
+              }
+            }),
+            revoked ? 403 : 503)),
+      );
+      await workflow.load();
+      await store.save(StoredOfflineCredential(
+        cashierId: 'cashier-1',
+        deviceId: 'device-1',
+        credentialVersion: 1,
+        salt: List.filled(16, 1),
+        derivedVerifier: List.filled(32, 2),
+        bundleIssuedAt: now,
+        bundleExpiresAt: now.add(const Duration(days: 7)),
+        lastObservedWallClock: now,
+        clockAnchor: null,
+        failedAttempts: 0,
+        cooldownUntil: null,
+      ));
+      workflow = FirebasePosWorkflow(
+        humanAuth: _TestAuth(null),
+        deviceAuth: deviceAuth,
+        humanIdentity: _HumanIdentity(),
+        applications: _Applications(),
+        memberships: _Memberships(),
+        devices: DeviceFunctions(
+          humanAuth: _TestAuth(null),
+          deviceSession: _DeviceSession(),
+          humanGateway: gateway,
+          deviceGateway: gateway,
+        ),
+        cashiers: cashiers,
+        store: store,
+        offlineClock: offlineClock,
+        clock: () => now,
+      );
+
+      expect(
+          (await workflow.load()).state, PosGateState.deviceReadyCashierLocked);
+      expect(deviceAuth.currentUser?.uid, 'device:device-1');
+      expect(await store.readDeviceContext('device-1'), isNotNull);
+      expect(await store.read('device-1', 'cashier-1'), isNotNull);
+
+      revoked = true;
+      expect((await workflow.load()).state, PosGateState.deviceRevoked);
+      expect(deviceAuth.currentUser, isNull);
+      expect(await store.readDeviceContext('device-1'), isNull);
+      expect(await store.read('device-1', 'cashier-1'), isNull);
+    });
+  }
 
   for (final code in ['permission-denied', 'unauthenticated']) {
     test('$code invalidates authorization before later offline recovery',

@@ -3,37 +3,48 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sarisupply_core/sarisupply_core.dart';
 import 'package:sarisupply_design_system/sarisupply_design_system.dart';
 import 'package:sarisupply_firebase/sarisupply_firebase.dart';
+import 'package:sarisupply_auth/sarisupply_auth.dart';
 
 import 'bootstrap/driver_bootstrap.dart';
+import 'app/driver_app_gate.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await FirebaseBootstrap.initializeHuman(
-    selectDriverFirebaseOptions(const String.fromEnvironment('SARISUPPLY_ENV')),
-  );
-  runApp(const ProviderScope(child: SariSupplyDriverApp()));
+  runApp(ProviderScope(
+      child: SariSupplyStartupGate(
+    role: 'Driver',
+    initialize: () async {
+      await FirebaseBootstrap.initializeHuman(selectDriverFirebaseOptions(
+          const String.fromEnvironment('SARISUPPLY_ENV', defaultValue: 'dev')));
+    },
+    child: const SariSupplyDriverApp(),
+  )));
 }
 
 class SariSupplyDriverApp extends StatelessWidget {
-  const SariSupplyDriverApp({super.key});
-
+  const SariSupplyDriverApp({super.key, this.auth, this.gateway});
+  final AuthRepository? auth;
+  final DeliveryFunctions? gateway;
   @override
   Widget build(BuildContext context) {
+    Widget home;
+    try {
+      home = DriverAppGate(
+          auth: auth ?? FirebaseGoogleAuthRepository.forDefaultApp(),
+          gateway: gateway ?? DeliveryFunctions.forHuman());
+    } catch (_) {
+      home = const Scaffold(
+          body: SariSupplyEntry(
+              role: 'Driver',
+              child: SariSupplyStatus(
+                  message:
+                      'Driver setup is incomplete. Contact your administrator.',
+                  error: true)));
+    }
     return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: AppIdentity.driverName,
-      theme: SariSupplyTheme.light(),
-      home: const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(AppIdentity.driverName),
-              Text('Foundation ready'),
-            ],
-          ),
-        ),
-      ),
-    );
+        debugShowCheckedModeBanner: false,
+        title: AppIdentity.driverName,
+        theme: SariSupplyTheme.light(),
+        home: home);
   }
 }

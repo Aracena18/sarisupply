@@ -8,7 +8,7 @@ SariSupply is a production-oriented retail operating system and distribution pla
 
 All user-facing applications are implemented in Flutter:
 
-- SariSupply POS — Flutter Android/tablet, offline-first
+- SariSupply POS — Flutter Android, phone-first and offline-first
 - SariSupply Driver — Flutter Android
 - SariSupply Admin / Operations — Flutter Web
 
@@ -18,8 +18,11 @@ No React, Next.js, or separate non-Flutter frontend is part of the approved arch
 
 - Firebase Authentication with Google Sign-In for Owner/Manager and administrative accounts
 - Cloud Firestore as cloud source of truth
-- Cloud Functions for privileged server-side logic
-- Firebase Storage, FCM, App Check, and Crashlytics
+- Deno Deploy Free for privileged server-side computation against Firestore,
+  subject to runtime, account eligibility and measured capacity gates
+- Eligible free FCM, App Check, Crashlytics and Firebase Hosting services
+- Firebase Spark only; no linked billing, deployed Cloud Functions, Secret
+  Manager, Cloud Storage, paid backups or second cloud database
 - Drift/SQLite for durable offline POS transactions and local projections
 
 ## Confirmed production capabilities
@@ -40,8 +43,14 @@ also run the backend TypeScript build, unit tests, Firestore rules tests, and
 identity acceptance tests against a local demo project. The backend checks can
 also be run alone with `bash tool/verify_firebase.sh`.
 
-Before live Development acceptance testing, Cloud Functions must be deployed,
-the cashier PIN pepper must be provisioned in Secret Manager, and an existing
-Firebase Auth user must be granted the SariSupply Admin role. These steps
-require the Development project to have billing enabled. Production deployment
-needs its own release approval and verification.
+The approved [free production scope](../superpowers/specs/2026-10-04-free-production-platform.md)
+supersedes the earlier billing-dependent deployment direction. Prepare the HTTPS
+backend and server-only credentials using [FREE_BACKEND.md](../engineering/FREE_BACKEND.md).
+Keep Firebase on Spark. An existing Firebase Auth user still needs the SariSupply
+Admin role. Live account, attestation, capacity and device acceptance are required
+before moving beyond Phase 1. No real-world pilot starts before all platform
+milestones pass. Production deployment needs release approval and verification.
+
+## Local checkout milestone
+
+The user authorized local Phases 2–4 while hosted acceptance remains pending. Phase 4 shares one scoped SQLite database for catalog, stock, financial facts and outbox, with migrations through v5. Phone rear-camera scanning/manual fallback, local cash/manual QR receipts and shifts use pure shared policies and trusted HTTPS reconciliation. Grant secrets stay in encrypted device storage and server hashes; historical receipt intent contains a reference only. See [PHONE_CHECKOUT.md](../engineering/PHONE_CHECKOUT.md). This sequencing exception does not authorize deployment or a full-platform pilot.

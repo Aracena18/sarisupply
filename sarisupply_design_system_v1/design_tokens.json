@@ -1,0 +1,148 @@
+{
+  "meta": {
+    "name": "SariSupply Design System",
+    "version": "1.0.0",
+    "principle": "Warm Utility",
+    "description": "Clean, minimal, operational retail UI with selective orange energy and warm neutral surfaces."
+  },
+  "color": {
+    "brand": {
+      "orange700": "#C84A00",
+      "orange600": "#E35D00",
+      "orange500": "#F26A1B",
+      "orange400": "#FA873B",
+      "orange200": "#FFD0AE",
+      "orange100": "#FFE8D6",
+      "orange50": "#FFF3E8"
+    },
+    "neutral": {
+      "ink950": "#111111",
+      "ink900": "#1C1B1A",
+      "ink800": "#302E2C",
+      "ink600": "#5F5A55",
+      "ink500": "#6F675F",
+      "ink300": "#A39A91",
+      "ink150": "#D7D1CB",
+      "ink50": "#F5F2EE",
+      "divider": "#E9E4DE",
+      "canvas": "#FAF7F2",
+      "paper": "#FFFDF9",
+      "card": "#FFFFFF"
+    },
+    "semantic": {
+      "success": "#23855B",
+      "warning": "#B76E00",
+      "error": "#D64545",
+      "info": "#356AC3"
+    }
+  },
+  "typography": {
+    "primaryFamily": "Instrument Sans",
+    "fallback": [
+      "Inter",
+      "Roboto",
+      "Arial",
+      "sans-serif"
+    ],
+    "scale": {
+      "display": {
+        "size": 32,
+        "lineHeight": 38,
+        "weight": 700
+      },
+      "screenTitle": {
+        "size": 28,
+        "lineHeight": 34,
+        "weight": 700
+      },
+      "sectionHeading": {
+        "size": 22,
+        "lineHeight": 28,
+        "weight": 700
+      },
+      "cardHeading": {
+        "size": 18,
+        "lineHeight": 24,
+        "weight": 600
+      },
+      "bodyLarge": {
+        "size": 16,
+        "lineHeight": 24,
+        "weight": 400
+      },
+      "body": {
+        "size": 14,
+        "lineHeight": 20,
+        "weight": 400
+      },
+      "label": {
+        "size": 14,
+        "lineHeight": 18,
+        "weight": 600
+      },
+      "smallLabel": {
+        "size": 13,
+        "lineHeight": 16,
+        "weight": 600
+      },
+      "caption": {
+        "size": 12,
+        "lineHeight": 16,
+        "weight": 500
+      },
+      "moneyLarge": {
+        "size": 28,
+        "lineHeight": 32,
+        "weight": 700,
+        "tabularFigures": true
+      }
+    }
+  },
+  "spacing": [
+    4,
+    8,
+    12,
+    16,
+    24,
+    32,
+    48,
+    64
+  ],
+  "radius": {
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 20
+  },
+  "border": {
+    "width": 1,
+    "color": "#E9E4DE"
+  },
+  "shadow": {
+    "overlay": {
+      "x": 0,
+      "y": 8,
+      "blur": 24,
+      "spread": 0,
+      "color": "rgba(17,17,17,0.08)"
+    }
+  },
+  "icon": {
+    "grid": 24,
+    "stroke": 2,
+    "terminal": "rounded"
+  },
+  "layout": {
+    "mobileHorizontalPadding": 16,
+    "sectionGap": 24,
+    "componentGap": 12,
+    "minTouchTarget": 48
+  },
+  "usage": {
+    "brightOrangeText": "#111111",
+    "darkOrangeText": "#FFFFFF",
+    "defaultPage": "#FFFDF9",
+    "defaultCard": "#FFFFFF"
+  }
+}

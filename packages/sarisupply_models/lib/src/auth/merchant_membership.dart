@@ -11,6 +11,7 @@ final class MerchantMembership {
     required this.createdAt,
     required this.createdBy,
     required this.updatedAt,
+    this.merchantName = 'Store',
   }) : branchIds = List.unmodifiable(branchIds);
 
   factory MerchantMembership.fromMap(Map<String, Object?> map) =>
@@ -24,6 +25,7 @@ final class MerchantMembership {
         createdAt: map['createdAt'] as DateTime,
         createdBy: map['createdBy'] as String,
         updatedAt: map['updatedAt'] as DateTime,
+        merchantName: map['merchantName'] as String? ?? 'Store',
       );
 
   final String userId;
@@ -35,6 +37,7 @@ final class MerchantMembership {
   final DateTime createdAt;
   final String createdBy;
   final DateTime updatedAt;
+  final String merchantName;
 
   Map<String, Object?> toMap() => {
         'userId': userId,

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
+import 'package:sarisupply_models/sarisupply_models.dart';
 
 abstract interface class SecureKeyValueStore {
   Future<String?> read(String key);
@@ -145,11 +146,14 @@ final class StoredDeviceContext {
     required this.verifiedAt,
     required this.lastObservedWallClock,
     required this.clockAnchor,
+    this.merchantName,
+    this.branchName,
   });
 
   final String deviceId;
   final String merchantId;
   final String branchId;
+  final String? merchantName, branchName;
   final DateTime verifiedAt;
   final DateTime lastObservedWallClock;
   final OfflineClockAnchor? clockAnchor;
@@ -166,6 +170,8 @@ final class StoredDeviceContext {
         deviceId: deviceId,
         merchantId: merchantId,
         branchId: branchId,
+        merchantName: merchantName,
+        branchName: branchName,
         verifiedAt: verifiedAt,
         lastObservedWallClock:
             lastObservedWallClock ?? this.lastObservedWallClock,
@@ -176,6 +182,8 @@ final class StoredDeviceContext {
         'deviceId': deviceId,
         'merchantId': merchantId,
         'branchId': branchId,
+        'merchantName': merchantName,
+        'branchName': branchName,
         'verifiedAt': verifiedAt.toUtc().toIso8601String(),
         'lastObservedWallClock':
             lastObservedWallClock.toUtc().toIso8601String(),
@@ -194,6 +202,8 @@ final class StoredDeviceContext {
         deviceId: map['deviceId'] as String,
         merchantId: map['merchantId'] as String,
         branchId: map['branchId'] as String,
+        merchantName: map['merchantName'] as String?,
+        branchName: map['branchName'] as String?,
         verifiedAt: DateTime.parse(map['verifiedAt'] as String),
         lastObservedWallClock:
             DateTime.parse(map['lastObservedWallClock'] as String),
@@ -284,16 +294,56 @@ final class SecureOfflineCredentialStore {
       _credentialKey(credential.deviceId, credential.cashierId),
       jsonEncode(credential.toMap()));
 
-  Future<void> delete(String deviceId, String cashierId) =>
-      _keys.delete(_credentialKey(deviceId, cashierId));
+  Future<void> delete(String deviceId, String cashierId) async {
+    await _keys.delete('active-checkout-grant:$deviceId:$cashierId');
+    await _keys.delete(_credentialKey(deviceId, cashierId));
+  }
+
+  Future<void> saveCheckoutGrant(IssuedCashierGrant grant) async {
+    final s = grant.scope;
+    await _keys.write('checkout-grant:${s.deviceId}:${s.grantId}',
+        jsonEncode(grant.toSecureMap()));
+    await _keys.write(
+        'active-checkout-grant:${s.deviceId}:${s.cashierId}', s.grantId);
+  }
+
+  Future<IssuedCashierGrant?> readCheckoutGrant(
+      String deviceId, String grantId) async {
+    final encoded = await _keys.read('checkout-grant:$deviceId:$grantId');
+    if (encoded == null) return null;
+    try {
+      final grant = IssuedCashierGrant.fromMap(
+          Map<String, Object?>.from(jsonDecode(encoded) as Map));
+      return grant.scope.deviceId == deviceId && grant.scope.grantId == grantId
+          ? grant
+          : null;
+    } on FormatException {
+      return null;
+    } on TypeError {
+      return null;
+    } on ArgumentError {
+      return null;
+    }
+  }
+
+  Future<IssuedCashierGrant?> activeCheckoutGrant(
+      String deviceId, String cashierId) async {
+    final id = await _keys.read('active-checkout-grant:$deviceId:$cashierId');
+    if (id == null) return null;
+    final grant = await readCheckoutGrant(deviceId, id);
+    return grant?.scope.cashierId == cashierId ? grant : null;
+  }
 
   /// Remove offline authorization while preserving pending audit evidence.
   Future<void> invalidateDeviceAuthorization(String deviceId) async {
     // Invalidate the bootstrap anchor before any potentially corrupt credential.
     await _keys.delete(_contextKey(deviceId));
+    await _keys.delete('offline-roster:$deviceId');
     final entries = await _keys.readAll();
     final prefix = 'offline-credential:$deviceId:';
-    for (final key in entries.keys.where((key) => key.startsWith(prefix))) {
+    for (final key in entries.keys.where((key) =>
+        key.startsWith(prefix) ||
+        key.startsWith('active-checkout-grant:$deviceId:'))) {
       await _keys.delete(key);
     }
   }
@@ -338,6 +388,39 @@ final class SecureOfflineCredentialStore {
       if (record != null) records.add(record);
     }
     return records;
+  }
+
+  // Display metadata only. PIN verification and trusted-clock policy grant access.
+  Future<void> saveRoster(
+          String deviceId, List<CashierCredentialProjection> cashiers) =>
+      _keys.write(
+          'offline-roster:$deviceId',
+          jsonEncode(cashiers
+              .map((c) => {
+                    'id': c.cashierId,
+                    'name': c.displayName,
+                    'code': c.employeeCode,
+                  })
+              .toList()));
+
+  Future<List<CashierCredentialProjection>> readRoster(String deviceId) async {
+    final value = await _keys.read('offline-roster:$deviceId');
+    if (value == null) return [];
+    try {
+      return (jsonDecode(value) as List).map((raw) {
+        final r = Map<String, dynamic>.from(raw as Map);
+        return CashierCredentialProjection(
+            cashierId: r['id'] as String,
+            displayName: r['name'] as String,
+            employeeCode: r['code'] as String,
+            status: 'active',
+            assignedBranchIds: const [],
+            mustChangePin: false,
+            credentialVersion: 0);
+      }).toList();
+    } on Object {
+      return [];
+    }
   }
 
   Future<void> queueFailedAttempt({

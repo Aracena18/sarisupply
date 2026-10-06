@@ -1,3 +1,5 @@
+import 'package:sarisupply_models/sarisupply_models.dart';
+
 final class IssuedCashierPin {
   const IssuedCashierPin({
     required this.cashierId,
@@ -15,11 +17,13 @@ final class CashierPinVerification {
     required this.cashierId,
     required this.credentialVersion,
     required this.mustChangePin,
+    this.grant,
   });
 
   final String cashierId;
   final int credentialVersion;
   final bool mustChangePin;
+  final IssuedCashierGrant? grant;
 }
 
 final class CashierCredentialProjection {
@@ -74,6 +78,7 @@ final class OfflinePinFailureEvent {
 
 abstract interface class CashierRepository {
   Future<IssuedCashierPin> createCashier({
+    String? operationId,
     required String merchantId,
     required String displayName,
     required String employeeCode,

@@ -1,0 +1,13 @@
+{
+  "nodeModulesDir": "manual",
+  "deploy": {
+    "org": "aracena18",
+    "app": "aracena18-sarisupply-dev-api",
+    "install": "npm ci --include=dev",
+    "build": "npm run build && npm prune --omit=dev",
+    "runtime": {
+      "type": "dynamic",
+      "entrypoint": "lib/https/main.js"
+    }
+  }
+}

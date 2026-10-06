@@ -23,7 +23,8 @@ void main() {
       continue;
     }
 
-    for (final entity in directory.listSync(recursive: true, followLinks: false)) {
+    for (final entity
+        in directory.listSync(recursive: true, followLinks: false)) {
       if (entity is! File) {
         continue;
       }
@@ -62,8 +63,7 @@ void _checkDartFile(
   List<String> violations,
 ) {
   final sourceApp = _appForPath(root, sourcePath);
-  final importPattern =
-      RegExp(r'''^\s*(?:import|export)\s+['"]([^'"]+)['"]''');
+  final importPattern = RegExp(r'''^\s*(?:import|export)\s+['"]([^'"]+)['"]''');
 
   final lines = file.readAsLinesSync();
   for (var index = 0; index < lines.length; index++) {

@@ -20,7 +20,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text('SariSupply Admin'), findsOneWidget);
+    expect(find.text('SariSupply'), findsOneWidget);
     expect(find.text('Sign in with Google'), findsOneWidget);
   });
 }

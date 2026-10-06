@@ -1,11 +1,11 @@
 {
-    "name": "sarisupply_admin",
-    "short_name": "sarisupply_admin",
+    "name": "SariSupply Admin",
+    "short_name": "SariSupply",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#FAFAF7",
+    "theme_color": "#00796B",
+    "description": "SariSupply store application review",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

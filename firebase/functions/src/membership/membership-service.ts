@@ -153,7 +153,7 @@ export async function acceptManagerInvitation(
     const branchScope = scope(data as Scope);
     await assertBranches(db, tx, merchantId, branchScope.branchIds);
     const now = FieldValue.serverTimestamp();
-    const membership = { userId: uid, merchantId, role: 'manager', status: 'active',
+    const membership = { userId: uid, merchantId, email, role: 'manager', status: 'active',
       ...branchScope, createdAt: now, createdBy: data.createdBy, updatedAt: now };
     if (existing.exists) tx.set(membershipRef, membership);
     else tx.create(membershipRef, membership);

@@ -6,9 +6,17 @@ This file is the repository entry point for coding agents. Keep it short. Follow
 
 ## Start here
 
+Read `design.md` before changing UI, UX, or user-facing copy.
+
 - Product and production architecture: `docs/architecture/SARI_SUPPLY_PRODUCTION_PLAN.md`
 - Engineering documentation index: `docs/engineering/README.md`
 - Current repository state: `docs/engineering/CURRENT_STATE.md`
+- Approved free production scope: `docs/superpowers/specs/2026-10-04-free-production-platform.md`
+- Active free-backend milestone: `docs/superpowers/plans/2026-10-04-free-backend.md`
+- Active identity workspace: `docs/superpowers/plans/2026-10-04-identity-workspace.md`
+- Active catalog/stock workspace: `docs/superpowers/plans/2026-10-04-catalog-stock.md`
+- Approved phone checkout design: `docs/superpowers/specs/2026-10-04-phone-checkout.md`
+- Active Phase 4 plan: `docs/superpowers/plans/2026-10-05-phone-checkout.md`
 - Current Firebase identity design: `docs/superpowers/specs/2026-09-26-firebase-identity-tenant-auth-design.md`
 - Current Firebase identity implementation plan: `docs/superpowers/plans/2026-09-26-firebase-identity-tenant-auth.md`
 - Definition of done: `docs/engineering/DEFINITION_OF_DONE.md`
@@ -49,31 +57,48 @@ See `docs/engineering/ARCHITECTURE_BOUNDARIES.md`.
 - Do not redesign user-facing UI unless the task explicitly authorizes a design change.
 - Preserve offline data and security invariants described in approved specifications.
 
-## Verification
+## Verification & Testing Approach (Build-Focused Mode)
 
-During implementation, prefer:
+To maximize building velocity across phases:
+- **Agent role**: Responsible for rapid, high-quality building (clean domain logic, offline state, responsive phone UI screens, architectural boundaries, and zero compile/static analysis warnings).
+- **Light testing during building**: Keep per-task automated testing light. Do not build heavy UI widget pump matrices, slow SQLite FFI async loops, or heavy integration test suites for every screen during construction.
+- **Fast verification**: Rely primarily on static analysis (`flutter analyze` / `dart analyze`) and fast unit checks for critical business logic or financial calculations.
+- **User manual testing**: The developer/user conducts hands-on manual verification and user flow testing during and between phases.
+- **Heavy testing deferred**: Comprehensive end-to-end integration flows, full emulator suites, and heavy automated testing runs (`tool/verify_harness.sh`) are deferred until *after* all features across the production plan are implemented.
+
+During implementation, verify with:
+
+```bash
+flutter analyze
+```
+
+or for fast package sanity:
 
 ```bash
 bash tool/verify_fast.sh
 ```
 
-Before declaring a task complete, run:
-
-```bash
-bash tool/verify_harness.sh
-```
-
-If a task affects Firebase backend behavior, also run the Firebase verification path defined by the harness once that workspace exists.
-
 ## Agent workflow
 
-Use the repository workflow:
+Use the streamlined builder workflow:
 
 ```text
-discover -> plan -> test/contract -> implement -> verify -> review -> repair -> final verify
+discover -> plan -> implement -> light verify (analyze/focused unit) -> review
 ```
 
-Do not claim completion merely because code was generated.
+Do not claim completion merely because code was generated. Ensure code compiles cleanly with zero static analysis warnings.
+
+## Codex skills
+
+Use available skills whenever their documented purpose matches the current task. Read the relevant `SKILL.md` before applying it; load only the skills needed. User-installed skills live under `$CODEX_HOME/skills` (default `~/.codex/skills`); repository skills live under `.agents/skills`.
+
+- Use repository skills for implementation, Flutter quality, Firebase security, offline safety, review, and completion checks when applicable.
+- Use `caveman` for concise routine updates and answers. Preserve technical facts, commands, paths, errors, and verification results; use fuller explanations when clarity or the user requires them. Honor "normal mode" or "stop caveman". Use `ultracave` and `megacave` only when explicitly requested.
+- Use `caveman-commit`, `caveman-review`, `caveman-help`, and `caveman-stats` for their corresponding tasks. Terse review wording must preserve the repository review scope. Report usage or savings only when supported by measurements.
+- Use `caveman-compress` only when the user requests file compression; preserve its backup and exact-code requirements.
+- Use matching OmniRoute `omni-*` and `cli-*` skills for gateway authentication, models, routing, compression, diagnostics, or management. Use `config-codex-cli` when configuring Codex to connect to OmniRoute is part of the task. Confirm the required gateway or CLI is available before claiming an integration works.
+
+Skill installation alone does not authorize changing Codex providers, credentials, gateway settings, or repository files outside the task. Skills must respect this guide's architecture, security, offline, UI, and verification requirements. If a skill is unavailable, state that briefly and continue with the repository workflow where possible.
 
 ## UI constraint for harness work
 

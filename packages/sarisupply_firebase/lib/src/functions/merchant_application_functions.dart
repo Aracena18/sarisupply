@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
 import 'package:sarisupply_models/sarisupply_models.dart';
+import 'https_merchant_gateway.dart';
 
 abstract interface class MerchantCallableGateway {
   Future<Map<String, Object?>> call(
@@ -45,9 +46,7 @@ final class MerchantApplicationFunctions
     return MerchantApplicationFunctions(
       auth: FirebaseAuth.instanceFor(app: app),
       firestore: FirebaseFirestore.instanceFor(app: app),
-      gateway: FirebaseMerchantCallableGateway(
-        FirebaseFunctions.instanceFor(app: app, region: 'asia-southeast1'),
-      ),
+      gateway: HttpsMerchantGateway.forApp(app),
     );
   }
 
@@ -66,6 +65,23 @@ final class MerchantApplicationFunctions
         .where('applicantUid', isEqualTo: uid)
         .snapshots()
         .map((snapshot) => snapshot.docs.map(_applicationFromDoc).toList());
+  }
+
+  @override
+  Future<MerchantApplication?> getApplication(String applicationId) async {
+    final snapshot = await _firestore
+        .doc('merchantApplications/$applicationId')
+        .get(const GetOptions(source: Source.server));
+    if (!snapshot.exists) return null;
+    final data = Map<String, Object?>.from(snapshot.data()!);
+    data['id'] = snapshot.id;
+    for (final field in ['submittedAt', 'reviewedAt']) {
+      final value = data[field];
+      if (value is Timestamp) {
+        data[field] = value.toDate();
+      }
+    }
+    return MerchantApplication.fromMap(data);
   }
 
   @override

@@ -119,7 +119,13 @@ export async function revokePosDevice(
 
 export async function getDeviceBootstrap(db: Firestore, request: AuthRequest) {
   const device = await authorization(db).requireActiveDevice(request);
+  const [merchant, branch] = await Promise.all([
+    db.doc(`merchants/${device.merchantId}`).get(),
+    db.doc(`merchants/${device.merchantId}/branches/${device.branchId}`).get(),
+  ]);
   return {
+    merchantName: merchant.get('businessProfile.name') ?? merchant.get('displayName') ?? merchant.get('businessName') ?? device.merchantId,
+    branchName: branch.get('name') ?? branch.get('displayName') ?? device.branchId,
     deviceId: requireDocumentId(request.auth?.token.deviceId, 'device ID'),
     merchantId: device.merchantId,
     branchId: device.branchId,

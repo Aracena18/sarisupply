@@ -1,3 +1,4 @@
+import { issueCashierGrant, newGrantCredential } from '../checkout/cashier-grants';
 import { randomInt } from 'node:crypto';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type { Firestore, Transaction } from 'firebase-admin/firestore';
@@ -12,6 +13,7 @@ import { nextFailure, resetFailures } from './pin-rate-limit';
 type PinHasher = ReturnType<typeof createPinHasher>;
 type CashierStatus = 'active' | 'suspended';
 type CreateCashierInput = {
+  operationId?: string;
   merchantId: string;
   displayName: string;
   employeeCode: string;
@@ -80,9 +82,14 @@ export async function createCashier(
   );
   const pin = temporaryPin();
   const verifier = await hasher.hash(pin);
-  const ref = db.collection(`merchants/${merchantId}/cashiers`).doc();
+  const ref = input.operationId === undefined
+    ? db.collection(`merchants/${merchantId}/cashiers`).doc()
+    : db.doc(cashierPath(merchantId, requireDocumentId(input.operationId, 'operation ID')));
   await db.runTransaction(async (tx) => {
     await authorizeHumanBranches(db, tx, uid, merchantId, branchIds);
+    if ((await tx.get(ref)).exists) {
+      throw new HttpsError('already-exists', 'Cashier already created. Refresh staff and reset the PIN.');
+    }
     const now = FieldValue.serverTimestamp();
     tx.create(ref, { merchantId, displayName, employeeCode,
       assignedBranchIds: branchIds, status: 'active', mustChangePin: true,
@@ -253,13 +260,17 @@ export async function verifyCashierPin(
   cashierIdInput: string, pin: string,
 ) {
   const cashierId = requireDocumentId(cashierIdInput, 'cashier ID');
+  const grantCredential = newGrantCredential();
   const result = await db.runTransaction(async (tx) => {
     const device = await activeDeviceInTransaction(db, tx, request);
-    return checkPin(db, tx, hasher, device, cashierId, pin);
+    const check = await checkPin(db, tx, hasher, device, cashierId, pin);
+    if (check.status !== 'ok' || check.mustChangePin) return check;
+    const grant = issueCashierGrant(db, tx, device, request, cashierId, check.credentialVersion, grantCredential);
+    return { ...check, grant };
   });
   requirePinSuccess(result);
   return { cashierId, credentialVersion: result.credentialVersion,
-    mustChangePin: result.mustChangePin };
+    mustChangePin: result.mustChangePin, ...('grant' in result ? { grant: result.grant } : {}) };
 }
 
 export async function changeCashierPin(

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
 
 import 'google_identity_gateway.dart';
+import '../environment/client_configuration.dart';
 
 final class FirebaseGoogleAuthRepository implements AuthRepository {
   factory FirebaseGoogleAuthRepository.forDefaultApp({
@@ -11,7 +12,14 @@ final class FirebaseGoogleAuthRepository implements AuthRepository {
   }) =>
       FirebaseGoogleAuthRepository(
         auth: FirebaseAuth.instanceFor(app: Firebase.app()),
-        serverClientId: serverClientId,
+        serverClientId: kIsWeb
+            ? serverClientId
+            : ClientConfiguration.googleServerClientId(
+                Firebase.app().options.projectId,
+                supplied: serverClientId.isNotEmpty
+                    ? serverClientId
+                    : const String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID'),
+              ),
       );
 
   FirebaseGoogleAuthRepository({

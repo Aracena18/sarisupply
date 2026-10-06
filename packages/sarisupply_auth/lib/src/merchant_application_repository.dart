@@ -2,6 +2,7 @@ import 'package:sarisupply_models/sarisupply_models.dart';
 
 abstract interface class MerchantApplicationRepository {
   Stream<List<MerchantApplication>> watchMyApplications();
+  Future<MerchantApplication?> getApplication(String applicationId);
 
   Future<String> saveDraft({
     String? applicationId,

@@ -1,0 +1,236 @@
+{
+  "package": "sarisupply_design_system",
+  "version": "1.0.0",
+  "files": [
+    {
+      "path": "CODEX_HANDOFF.md",
+      "bytes": 2783,
+      "sha256": "6b928c89197cc7ff5aaf9bb0481f93560b09c3514736990c1dff2fe63f8b7ec3"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2967,
+      "sha256": "f0099f735c14bba30c0f43f5785d285243871b9df508d4ee61fe0e471f58c5e3"
+    },
+    {
+      "path": "analysis_options.yaml",
+      "bytes": 164,
+      "sha256": "ce586bd6d40163eefbee6a0825f3114f93712e7e29da4b96012b442921151d41"
+    },
+    {
+      "path": "assets/brand/sarisupply_logo.svg",
+      "bytes": 7699,
+      "sha256": "6b676fc459b09a0fafdef30cb53686c0d7aa12a2bed9fc4ce2c7cb5c74033def"
+    },
+    {
+      "path": "assets/brand/sarisupply_symbol.svg",
+      "bytes": 2448,
+      "sha256": "e90a62e85714a643ab640ffd26cb41436e73a42053b202d0f49ccd3c4703c903"
+    },
+    {
+      "path": "assets/elements/card_cut.svg",
+      "bytes": 111,
+      "sha256": "d56a32cbb8f07f0e4707d0627a9b44c6732833187ba36e70387f891a21df7449"
+    },
+    {
+      "path": "assets/elements/module_shapes.svg",
+      "bytes": 303,
+      "sha256": "25644faa59c361ecbd4d9db87331e56c24210b7e6d99f299563faef7605513b6"
+    },
+    {
+      "path": "assets/elements/shelf_grid.svg",
+      "bytes": 204,
+      "sha256": "00faaf8b02b90cc6556eced0e6f771e5fb79e80f751d68a41eedf665ace336e8"
+    },
+    {
+      "path": "assets/elements/slats_pattern.svg",
+      "bytes": 514,
+      "sha256": "a86895487ab48246b64f2cdabc0613d07835df0f822464d97853b4c44637e795"
+    },
+    {
+      "path": "assets/elements/supply_line.svg",
+      "bytes": 212,
+      "sha256": "0c511ea8ae428a9bebca43e22f0bc89b32ee65569516e9b00e6cd85cea4d55fb"
+    },
+    {
+      "path": "assets/icons/analytics.svg",
+      "bytes": 224,
+      "sha256": "f18bf89ca34c461133a17f472da9d21d800711ec03133f394905b3d9fcc4a5e6"
+    },
+    {
+      "path": "assets/icons/branches.svg",
+      "bytes": 209,
+      "sha256": "fc9418b914983b680ffeedcc9ede450573f16abc3c0fd4c216a063b41bcd6342"
+    },
+    {
+      "path": "assets/icons/cashier.svg",
+      "bytes": 245,
+      "sha256": "31cf0e2fb1d388504324c08332af485b2459fbe442bf785b32a74d2b66ddbab8"
+    },
+    {
+      "path": "assets/icons/driver.svg",
+      "bytes": 262,
+      "sha256": "4061dc31d733883f9e55b9ad9b5b3ff8e28f8fe65fb8fd1a1556e50fbf027ac3"
+    },
+    {
+      "path": "assets/icons/inventory.svg",
+      "bytes": 214,
+      "sha256": "db896c8030e991e8e92c78f64741018e128b14a67770ed85759619bd1bea13a3"
+    },
+    {
+      "path": "assets/icons/orders.svg",
+      "bytes": 251,
+      "sha256": "c9274b8c37a4d904af81f0ff0ed79b112955b37fcd0a297b111c6186c232b26f"
+    },
+    {
+      "path": "assets/icons/pos.svg",
+      "bytes": 248,
+      "sha256": "da7cf62ffee56c248e347bd2283f7754dd5b27a8fbdaeee4b2d80c6e6f997e5a"
+    },
+    {
+      "path": "assets/icons/products.svg",
+      "bytes": 243,
+      "sha256": "6a792c22b7e3aef0f0828dcfcd1843530e75efedc38c3c105752186355fad0ac"
+    },
+    {
+      "path": "assets/icons/restock.svg",
+      "bytes": 252,
+      "sha256": "8b99ae1122cf72b928c1fb92a22ef8348b35f678b5c12843db3ce41272e03571"
+    },
+    {
+      "path": "assets/icons/suppliers.svg",
+      "bytes": 236,
+      "sha256": "05211120e05dbc31b62ecdb4de7d730cb1f318d9a1b50589d837cf2c4424850c"
+    },
+    {
+      "path": "design_tokens.json",
+      "bytes": 2851,
+      "sha256": "91a5dc1374bc48596fa9129bb385592c66dbbd10d50ef499bf4dcaa584d456a2"
+    },
+    {
+      "path": "docs/ACCESSIBILITY.md",
+      "bytes": 514,
+      "sha256": "06dc9e2ac55113568bedff657c89eddc788bf31380a28b4cb6d8131f722aae76"
+    },
+    {
+      "path": "docs/AI_SLOP_GUARDRAILS.md",
+      "bytes": 795,
+      "sha256": "9b9889e17610482fa5824e1f83cea609ffed4301022c500310ca85371cd78e62"
+    },
+    {
+      "path": "docs/BRAND_RULES.md",
+      "bytes": 983,
+      "sha256": "fa5cd6dcee9937d51549aa4c2c0903474d6451f7f9d834dc1e9694f0ff836842"
+    },
+    {
+      "path": "docs/SCREEN_RECIPE.md",
+      "bytes": 770,
+      "sha256": "dcffd70520d24e379331948655ef3fd7bf852212005fda4083156363741f544c"
+    },
+    {
+      "path": "docs/brand_foundations_reference.png",
+      "bytes": 1512558,
+      "sha256": "66a487cfae4bfe83c9734df2ae14c1816de25eee396b229deacbbb09d258e931"
+    },
+    {
+      "path": "example/brand_showcase.dart",
+      "bytes": 1258,
+      "sha256": "9459d5e5a00e5a1edf532a0621353a8d68c6b8cd1ba5c837802715ca81727d18"
+    },
+    {
+      "path": "lib/sarisupply_design_system.dart",
+      "bytes": 653,
+      "sha256": "294667bfa6ba96c4a5ddc09022cedd2744dd08f47da512a6bd52d6a052554927"
+    },
+    {
+      "path": "lib/src/components/ss_brand_slats.dart",
+      "bytes": 693,
+      "sha256": "0a5e9e82690bde8f6d3fb4e6fcc763ee0641d35d8e69cd1b008bdd96ea54b2a1"
+    },
+    {
+      "path": "lib/src/components/ss_card.dart",
+      "bytes": 1011,
+      "sha256": "a03d62961666809dca7dd38be2d591e00ebe6219818d8de46ed0d8f5964bef9b"
+    },
+    {
+      "path": "lib/src/components/ss_metric_card.dart",
+      "bytes": 1011,
+      "sha256": "8049e5b4fa73432e46713fb47a9e5cb08d9b1b27024f8ac25bc5af3e0102f1a0"
+    },
+    {
+      "path": "lib/src/components/ss_primary_button.dart",
+      "bytes": 1044,
+      "sha256": "566e6abca061f31881c99596273caba58cd86445d91fe754e5ac67e87168669a"
+    },
+    {
+      "path": "lib/src/components/ss_secondary_button.dart",
+      "bytes": 771,
+      "sha256": "47c51b17c1a8d5528b14fa8fe6edfe5000f8fda69e83f9bc1438b48be33bcf7a"
+    },
+    {
+      "path": "lib/src/components/ss_section_header.dart",
+      "bytes": 488,
+      "sha256": "bb0009aa866cf8855e617731f00d35d467cc013037b38ddbcf8c61b2a7fe8639"
+    },
+    {
+      "path": "lib/src/components/ss_status_chip.dart",
+      "bytes": 1190,
+      "sha256": "979ca9a89f4a2e0327cbb275d7014231913d4bc11a855af8402ef597a9dbf170"
+    },
+    {
+      "path": "lib/src/components/ss_text_field.dart",
+      "bytes": 849,
+      "sha256": "af9e03129cd3e1b46d8fb1063184a10997e05a4b7cbfd12723366ece7ba3dd04"
+    },
+    {
+      "path": "lib/src/icons/sarisupply_icon.dart",
+      "bytes": 822,
+      "sha256": "23a6799916b4814e1bb79871f4415d562f5009f367ec21ed4319a5db67593f1b"
+    },
+    {
+      "path": "lib/src/theme/sarisupply_theme.dart",
+      "bytes": 4927,
+      "sha256": "468d5127286c8b80ebbfb5ed58af845fd94f2f00bd62d2ffdeb1d29243b6bb63"
+    },
+    {
+      "path": "lib/src/tokens/colors.dart",
+      "bytes": 1141,
+      "sha256": "a230a51d5784483f83bc5260bd2560da01e599ef59ca1928c78eadbbb0a44440"
+    },
+    {
+      "path": "lib/src/tokens/radii.dart",
+      "bytes": 169,
+      "sha256": "28cb70e22b4ff0357a7328f7db89b6dfd65417acb52bea6da844ca6e81a6f1d6"
+    },
+    {
+      "path": "lib/src/tokens/shadows.dart",
+      "bytes": 216,
+      "sha256": "b4d458e6e6e98fbebb868099bdb825c51881b5cbe4f9a9031a58ed2577f858e7"
+    },
+    {
+      "path": "lib/src/tokens/spacing.dart",
+      "bytes": 253,
+      "sha256": "119942a43b4424c33e04db88ad3e1ade42f012e9e1135c69a2a946a86e0ef2f4"
+    },
+    {
+      "path": "lib/src/tokens/typography.dart",
+      "bytes": 2608,
+      "sha256": "1003d8d3044f64a7f0149f7ee552c7889a6ee7ea803ab28bb7e862dedac3147b"
+    },
+    {
+      "path": "pubspec.yaml",
+      "bytes": 396,
+      "sha256": "a4f9f3dc273db80a88d1e7be640fbf1833b2eb64317f7b8c20cfbf26b38fbaa3"
+    },
+    {
+      "path": "test/design_tokens_test.dart",
+      "bytes": 535,
+      "sha256": "bdfa687bf53aebcb381b258126e642a2ad01f17375cf6e25caad413d30f22b79"
+    },
+    {
+      "path": "tokens.css",
+      "bytes": 745,
+      "sha256": "8e47479e0d3dedd05666246c2823e55158b0734e51eead8f91fd6de0684b2b0f"
+    }
+  ]
+}

@@ -8,12 +8,17 @@ import 'package:sarisupply_auth/sarisupply_auth.dart';
 import 'app/admin_app_gate.dart';
 import 'bootstrap/admin_bootstrap.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await FirebaseBootstrap.initializeHuman(
-    selectAdminFirebaseOptions(const String.fromEnvironment('SARISUPPLY_ENV')),
-  );
-  runApp(const ProviderScope(child: SariSupplyAdminApp()));
+  runApp(ProviderScope(
+      child: SariSupplyStartupGate(
+    role: 'Admin',
+    initialize: () async {
+      await FirebaseBootstrap.initializeHuman(selectAdminFirebaseOptions(
+          const String.fromEnvironment('SARISUPPLY_ENV', defaultValue: 'dev')));
+    },
+    child: const SariSupplyAdminApp(),
+  )));
 }
 
 class SariSupplyAdminApp extends StatelessWidget {

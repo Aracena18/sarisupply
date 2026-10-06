@@ -1,30 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
-
+import 'package:sarisupply_design_system/sarisupply_design_system.dart';
+import 'package:sarisupply_firebase/sarisupply_firebase.dart';
 import '../../merchant_review/presentation/merchant_review_list_screen.dart';
 
 class AdminAuthGate extends StatefulWidget {
-  const AdminAuthGate({
-    super.key,
-    required this.auth,
-    required this.access,
-    required this.reviews,
-  });
-
+  const AdminAuthGate(
+      {super.key,
+      required this.auth,
+      required this.access,
+      required this.reviews,
+      this.procurement});
   final AuthRepository auth;
   final AdminAccessRepository access;
   final AdminReviewRepository reviews;
-
+  final ProcurementGateway? procurement;
   @override
   State<AdminAuthGate> createState() => _AdminAuthGateState();
 }
 
 class _AdminAuthGateState extends State<AdminAuthGate> {
   late Stream<AuthUser?> _authStream;
-  String? _checkedUid;
+  String? _checkedUid, _error;
   Future<bool>? _accessCheck;
-  bool _signingIn = false;
-
+  bool _pending = false;
   @override
   void initState() {
     super.initState();
@@ -41,91 +40,125 @@ class _AdminAuthGateState extends State<AdminAuthGate> {
     }
   }
 
-  Future<void> _signIn() async {
-    setState(() => _signingIn = true);
+  Future<void> _authenticate({bool signOut = false}) async {
+    if (_pending) return;
+    setState(() {
+      _pending = true;
+      _error = null;
+    });
     try {
-      await widget.auth.signInWithGoogle();
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign-in failed: $error')),
-        );
+      if (signOut) {
+        await widget.auth.signOut();
+      } else {
+        await widget.auth.signInWithGoogle();
       }
+    } catch (error) {
+      if (mounted) setState(() => _error = operationErrorMessage(error));
     } finally {
-      if (mounted) setState(() => _signingIn = false);
+      if (mounted) setState(() => _pending = false);
     }
   }
 
+  Widget _entry(Widget child) => Scaffold(
+      body: SariSupplyEntry(
+          role: 'Admin',
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            child,
+            if (_error != null) ...[
+              const SizedBox(height: 16),
+              SariSupplyStatus(message: _error!, error: true)
+            ],
+          ])));
   @override
   Widget build(BuildContext context) => StreamBuilder<AuthUser?>(
-        stream: _authStream,
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Sign-in error: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData &&
-              snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final user = snapshot.data;
-          if (user == null) {
-            _checkedUid = null;
-            _accessCheck = null;
-            return Center(
-                child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('SariSupply Admin'),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: _signingIn ? null : _signIn,
-                  child: const Text('Sign in with Google'),
-                ),
-              ],
-            ));
-          }
-          if (_checkedUid != user.uid) {
-            _checkedUid = user.uid;
-            _accessCheck = widget.access.isActiveAdmin();
-          }
-          return FutureBuilder<bool>(
+      stream: _authStream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return _entry(SariSupplyStatus(
+              message: 'Unable to check sign-in.',
+              error: true,
+              actions: [
+                TextButton(
+                    onPressed: () => setState(() {
+                          _authStream = widget.auth.authStateChanges();
+                          _checkedUid = null;
+                          _accessCheck = null;
+                        }),
+                    child: const Text('Retry'))
+              ]));
+        }
+        if (!snapshot.hasData &&
+            snapshot.connectionState == ConnectionState.waiting) {
+          return _entry(const Column(children: [
+            LinearProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Checking sign-in…')
+          ]));
+        }
+        final user = snapshot.data;
+        if (user == null) {
+          _checkedUid = null;
+          _accessCheck = null;
+          return _entry(FilledButton(
+              onPressed: _pending ? null : () => _authenticate(),
+              child: Text(_pending ? 'Signing in…' : 'Sign in with Google')));
+        }
+        if (_checkedUid != user.uid) {
+          _checkedUid = user.uid;
+          _accessCheck = widget.access.isActiveAdmin();
+        }
+        return FutureBuilder<bool>(
             future: _accessCheck,
             builder: (context, access) {
               if (access.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
+                return _entry(const Column(children: [
+                  LinearProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Checking Admin access…')
+                ]));
               }
               if (access.hasError) {
-                return Center(
-                    child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Unable to check Admin access: ${access.error}'),
-                    TextButton(
-                        onPressed: () => setState(
-                            () => _accessCheck = widget.access.isActiveAdmin()),
-                        child: const Text('Retry')),
-                  ],
-                ));
+                return _entry(SariSupplyStatus(
+                    message: 'Unable to check Admin access',
+                    error: true,
+                    actions: [
+                      FilledButton(
+                          onPressed: _pending
+                              ? null
+                              : () => setState(() =>
+                                  _accessCheck = widget.access.isActiveAdmin()),
+                          child: const Text('Retry')),
+                      TextButton(
+                          onPressed: _pending
+                              ? null
+                              : () => _authenticate(signOut: true),
+                          child: const Text('Sign out')),
+                    ]));
               }
               if (access.data != true) {
-                return Center(
-                    child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Access denied'),
-                    const SizedBox(height: 8),
-                    const Text(
-                        'This Google account is not an active SariSupply Admin.'),
-                    TextButton(
-                        onPressed: widget.auth.signOut,
-                        child: const Text('Sign out')),
-                  ],
-                ));
+                return _entry(Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('Access denied',
+                          style: Theme.of(context).textTheme.titleLarge),
+                      const SizedBox(height: 16),
+                      const SariSupplyStatus(
+                          message:
+                              'This Google account is not an active SariSupply Admin.',
+                          icon: Icons.lock_outline),
+                      const SizedBox(height: 24),
+                      TextButton(
+                          onPressed: _pending
+                              ? null
+                              : () => _authenticate(signOut: true),
+                          child: Text(_pending ? 'Signing out…' : 'Sign out')),
+                    ]));
               }
               return MerchantReviewListScreen(
-                  reviews: widget.reviews, onSignOut: widget.auth.signOut);
-            },
-          );
-        },
-      );
+                  reviews: widget.reviews,
+                  onSignOut: widget.auth.signOut,
+                  procurement: widget.procurement);
+            });
+      });
 }

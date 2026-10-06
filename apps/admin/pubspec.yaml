@@ -19,6 +19,8 @@ dependencies:
     path: ../../packages/sarisupply_design_system
   sarisupply_firebase:
     path: ../../packages/sarisupply_firebase
+  sarisupply_inventory:
+    path: ../../packages/sarisupply_inventory
   sarisupply_models:
     path: ../../packages/sarisupply_models
   uuid: ^4.6.0

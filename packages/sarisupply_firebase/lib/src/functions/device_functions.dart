@@ -1,4 +1,3 @@
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
@@ -6,6 +5,7 @@ import 'package:sarisupply_auth/sarisupply_auth.dart';
 import '../auth/firebase_device_auth_repository.dart';
 import '../bootstrap/firebase_bootstrap.dart';
 import 'merchant_application_functions.dart';
+import 'https_merchant_gateway.dart';
 
 final class DeviceFunctions implements DeviceRepository {
   DeviceFunctions({
@@ -24,13 +24,8 @@ final class DeviceFunctions implements DeviceRepository {
     return DeviceFunctions(
       humanAuth: FirebaseAuth.instanceFor(app: humanApp),
       deviceSession: FirebaseDeviceAuthRepository.forApp(deviceApp),
-      humanGateway: FirebaseMerchantCallableGateway(
-        FirebaseFunctions.instanceFor(app: humanApp, region: 'asia-southeast1'),
-      ),
-      deviceGateway: FirebaseMerchantCallableGateway(
-        FirebaseFunctions.instanceFor(
-            app: deviceApp, region: 'asia-southeast1'),
-      ),
+      humanGateway: HttpsMerchantGateway.forApp(humanApp),
+      deviceGateway: HttpsMerchantGateway.forApp(deviceApp),
     );
   }
 
@@ -96,6 +91,8 @@ final class DeviceFunctions implements DeviceRepository {
       merchantId: response['merchantId'] as String,
       branchId: response['branchId'] as String,
       displayName: response['displayName'] as String,
+      merchantName: response['merchantName'] as String?,
+      branchName: response['branchName'] as String?,
     );
   }
 }

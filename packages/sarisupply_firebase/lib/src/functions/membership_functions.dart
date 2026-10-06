@@ -1,11 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
 import 'package:sarisupply_models/sarisupply_models.dart';
 
 import 'merchant_application_functions.dart';
+import 'https_merchant_gateway.dart';
 
 final class MembershipFunctions implements MembershipRepository {
   MembershipFunctions({
@@ -21,9 +21,7 @@ final class MembershipFunctions implements MembershipRepository {
     return MembershipFunctions(
       auth: FirebaseAuth.instanceFor(app: app),
       firestore: FirebaseFirestore.instanceFor(app: app),
-      gateway: FirebaseMerchantCallableGateway(
-        FirebaseFunctions.instanceFor(app: app, region: 'asia-southeast1'),
-      ),
+      gateway: HttpsMerchantGateway.forApp(app),
     );
   }
 
@@ -57,7 +55,13 @@ final class MembershipFunctions implements MembershipRepository {
         final snapshot =
             await _firestore.doc('merchants/${ref.id}/memberships/$uid').get();
         if (snapshot.exists) {
-          memberships.add(MerchantMembership.fromMap(_dated(snapshot.data()!)));
+          final merchant = await _firestore.doc('merchants/${ref.id}').get();
+          final data = _dated(snapshot.data()!);
+          final profile = merchant.data()?['businessProfile'];
+          data['merchantName'] = profile is Map && profile['name'] is String
+              ? profile['name']
+              : 'Store';
+          memberships.add(MerchantMembership.fromMap(data));
         }
       } on FirebaseException catch (error) {
         if (error.code != 'permission-denied') rethrow;

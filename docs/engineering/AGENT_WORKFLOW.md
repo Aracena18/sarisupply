@@ -26,33 +26,35 @@ For any non-trivial change, state:
 
 Prefer a vertical slice over separate broad "frontend" and "backend" rewrites.
 
-## 3. Test or contract first
+## 3. Light contract or unit test first
 
-When behavior is testable, add or update the smallest useful failing test before implementation.
-
-When a test cannot reasonably be written first, define an explicit acceptance contract before editing.
-
-Never weaken or delete a valid test merely to make a change pass.
+When business/financial logic is non-trivial, define the contract or add the smallest useful unit test before implementation.
+Avoid authoring heavy UI widget tests or emulator flows during feature building; maintain construction speed.
 
 ## 4. Implement
 
-- Make the smallest coherent change.
+- Build clean, production-grade features according to specifications.
 - Follow existing package boundaries.
-- Reuse existing abstractions before creating new ones.
+- Reuse existing abstractions and design-system components.
 - Do not refactor unrelated code.
-- Do not add a dependency without a concrete reason.
-- Do not change visual design unless explicitly requested.
+- Do not add dependencies without concrete justification.
 - Preserve approved security and offline invariants.
 
-## 5. Verify
+## 5. Light Verify
 
-During work, run:
+During feature building, verify quickly with static analysis and focused unit checks:
+
+```bash
+flutter analyze
+```
+
+or for fast package sanity:
 
 ```bash
 bash tool/verify_fast.sh
 ```
 
-Also run focused tests for the affected package or feature when useful.
+User conducts hands-on manual verification of screens and user flows. Full harness verification (`tool/verify_harness.sh`) is reserved for post-feature acceptance.
 
 ## 6. Review
 

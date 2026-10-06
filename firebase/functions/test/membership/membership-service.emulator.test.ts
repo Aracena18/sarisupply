@@ -55,7 +55,7 @@ describe('membership workflows', () => {
     await expect(acceptManagerInvitation(db, manager, 'merchant-1', inviteId)).rejects.toMatchObject({ code: 'permission-denied' });
     const first = await acceptManagerInvitation(db, recipient, 'merchant-1', inviteId);
     expect(await acceptManagerInvitation(db, recipient, 'merchant-1', inviteId)).toEqual(first);
-    expect((await db.doc('merchants/merchant-1/memberships/recipient-1').get()).data()).toMatchObject({ role: 'manager', branchIds: ['branch-a'], status: 'active' });
+    expect((await db.doc('merchants/merchant-1/memberships/recipient-1').get()).data()).toMatchObject({ role: 'manager', email: 'recipient@example.com', branchIds: ['branch-a'], status: 'active' });
     expect((await db.doc('users/recipient-1/merchantRefs/merchant-1').get()).exists).toBe(true);
     expect((await db.collection('merchants/merchant-1/memberships').get()).size).toBe(3);
   });

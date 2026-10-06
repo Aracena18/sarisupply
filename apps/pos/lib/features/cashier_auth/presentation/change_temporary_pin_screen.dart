@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:sarisupply_design_system/sarisupply_design_system.dart';
+import 'package:sarisupply_firebase/sarisupply_firebase.dart';
 
 import '../domain/cashier_login_service.dart';
 
@@ -35,9 +37,17 @@ class _ChangeTemporaryPinScreenState extends State<ChangeTemporaryPinScreen> {
 
   Future<void> _change() async {
     if (_busy) return;
-    if (!RegExp(r'^\d{4,6}$').hasMatch(_next.text) ||
-        _current.text == _next.text) {
-      setState(() => _error = 'Choose a different 4–6 digit PIN');
+    final validation = !RegExp(r'^\d{4,6}$').hasMatch(_current.text)
+        ? 'Enter your 4–6 digit temporary PIN'
+        : !RegExp(r'^\d{4,6}$').hasMatch(_next.text)
+            ? 'Use 4–6 digits for your new PIN'
+            : _current.text == _next.text
+                ? 'Choose a different PIN'
+                : null;
+    if (validation != null) {
+      _current.clear();
+      _next.clear();
+      setState(() => _error = validation);
       return;
     }
     setState(() {
@@ -50,36 +60,48 @@ class _ChangeTemporaryPinScreenState extends State<ChangeTemporaryPinScreen> {
         _current.text,
         _next.text,
       );
-      _current.clear();
-      _next.clear();
-      widget.onResult(result);
+      if (!mounted) return;
+      if (result.status == CashierLoginStatus.invalidPin ||
+          result.status == CashierLoginStatus.cooldown) {
+        setState(() => _error = result.status == CashierLoginStatus.invalidPin
+            ? 'Incorrect temporary PIN'
+            : 'Too many attempts. Wait and try again.');
+      } else {
+        widget.onResult(result);
+      }
     } catch (error) {
-      if (mounted) setState(() => _error = 'Unable to change PIN: $error');
+      if (mounted) setState(() => _error = operationErrorMessage(error));
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        _current.clear();
+        _next.clear();
+        setState(() => _busy = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: const Text('Change temporary PIN')),
+        appBar: sariSupplyTaskAppBar(context, title: 'Change temporary PIN'),
         body: Center(
             child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
           child: ListView(
               shrinkWrap: true,
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(
+                  MediaQuery.sizeOf(context).width < 600 ? 16 : 24),
               children: [
-                const Text('Set a permanent PIN before using this POS.'),
-                const SizedBox(height: 20),
                 TextField(
                     controller: _current,
+                    enabled: !_busy,
                     obscureText: true,
                     keyboardType: TextInputType.number,
                     decoration:
                         const InputDecoration(labelText: 'Temporary PIN')),
+                const SizedBox(height: 16),
                 TextField(
                     controller: _next,
+                    enabled: !_busy,
                     obscureText: true,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(labelText: 'New PIN')),

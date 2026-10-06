@@ -15,7 +15,11 @@ dependencies:
   flutter_riverpod: ^2.6.1
   flutter_secure_storage: ^11.2.0
   cryptography: ^2.9.0
+  mobile_scanner: 7.4.2
   uuid: ^4.6.0
+  sqflite: ^2.4.4
+  sarisupply_inventory:
+    path: ../../packages/sarisupply_inventory
   sarisupply_auth:
     path: ../../packages/sarisupply_auth
   sarisupply_core:
@@ -28,7 +32,11 @@ dependencies:
     path: ../../packages/sarisupply_models
 
 dev_dependencies:
+  sqflite_common_ffi: ^2.4.3
+  http: ^1.6.0
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
   flutter_lints: ^5.0.0
 

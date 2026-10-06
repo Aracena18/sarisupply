@@ -44,3 +44,20 @@ google-services.json
 
 # Superpowers execution scratch
 .superpowers/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# Downloaded Firebase Admin credentials
+*firebase-adminsdk*.json
+
+deno_token.txt
+
+deno-deploy-token.txt
+
+# Local Android build state
+**/.gradle/
+**/local.properties
+
+# Firebase emulator debug output
+*firestore-debug.log

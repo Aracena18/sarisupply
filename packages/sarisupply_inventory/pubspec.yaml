@@ -1,0 +1,17 @@
+name: sarisupply_inventory
+description: Durable SQLite catalog, stock ledger and bounded synchronization.
+publish_to: none
+version: 0.1.0
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+dependencies:
+  sqflite_common: ^2.5.6
+  cryptography: ^2.9.0
+  crypto: ^3.0.3
+  sarisupply_models:
+    path: ../sarisupply_models
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  sqflite_common_ffi: ^2.4.3

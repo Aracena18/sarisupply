@@ -24,6 +24,14 @@ if [[ "$node_major" != "22" ]]; then
   exit 1
 fi
 
+if ! command -v java >/dev/null; then
+  if [[ -n "${JAVA_HOME:-}" && -x "$JAVA_HOME/bin/java" ]]; then
+    export PATH="$JAVA_HOME/bin:$PATH"
+  elif [[ -x "/home/robert_jhon/.config/Code/User/globalStorage/pleiades.java-extension-pack-jdk/java/25/bin/java" ]]; then
+    export PATH="/home/robert_jhon/.config/Code/User/globalStorage/pleiades.java-extension-pack-jdk/java/25/bin:$PATH"
+  fi
+fi
+
 echo "==> Firebase Functions dependencies"
 cd "$functions_dir"
 if [[ -f package-lock.json ]]; then
@@ -65,7 +73,7 @@ if [[ "$backend_tests" != "0" ]]; then
   test_paths+=("../tests")
 fi
 
-test_command="cd functions && npx vitest run --no-file-parallelism ${test_paths[*]}"
+test_command="cd functions && npx vitest run --no-file-parallelism ${test_paths[*]} && npx --no-install deno run --allow-env --allow-read --allow-net=127.0.0.1,localhost --allow-sys test/runtime/probe.cjs"
 
 echo "==> Firebase emulator tests"
 cd "$firebase_root"

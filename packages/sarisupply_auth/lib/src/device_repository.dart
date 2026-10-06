@@ -21,12 +21,15 @@ final class DeviceBootstrap {
     required this.merchantId,
     required this.branchId,
     required this.displayName,
+    this.merchantName,
+    this.branchName,
   });
 
   final String deviceId;
   final String merchantId;
   final String branchId;
   final String displayName;
+  final String? merchantName, branchName;
 }
 
 abstract interface class DeviceRepository {

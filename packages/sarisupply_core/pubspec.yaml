@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  sarisupply_models:
+    path: ../sarisupply_models
 
 dev_dependencies:
   flutter_test:

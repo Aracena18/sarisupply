@@ -34,6 +34,15 @@ beforeEach(async () => {
 afterAll(async () => { await deleteApp(app); });
 
 describe('cashier lifecycle', () => {
+  it('a stable creation operation cannot create duplicates or store plaintext PIN', async () => {
+    const input = { ...cashierInput, operationId: 'cashier-retry-12345678' };
+    const issued = await createCashier(db, hasher, owner, input);
+    expect(issued.cashierId).toBe(input.operationId);
+    await expect(createCashier(db, hasher, owner, input)).rejects.toMatchObject({ code: 'already-exists' });
+    expect((await db.collection('merchants/merchant-1/cashiers').get()).size).toBe(1);
+    const credential = (await db.doc(`merchants/merchant-1/cashierCredentials/${issued.cashierId}`).get()).data();
+    expect(JSON.stringify(credential)).not.toContain(issued.temporaryPin);
+  });
   it('limits Managers to their assigned branches', async () => {
     await expect(createCashier(db, hasher, manager, {
       ...cashierInput, assignedBranchIds: ['branch-b'],

@@ -34,7 +34,7 @@ Small cross-application primitives that do not belong to a specific business dom
 
 ### sarisupply_models
 
-Domain value objects and records. Prefer keeping domain logic free from infrastructure concerns.
+Domain value objects, checkout/cart/money/shift policies and gateway contracts. Prefer keeping domain logic free from infrastructure concerns.
 
 ### sarisupply_design_system
 
@@ -44,9 +44,15 @@ Shared visual language and reusable Flutter UI primitives. It must not depend on
 
 Authentication/authorization contracts and pure access policies. Firebase-specific implementations do not belong here.
 
+### sarisupply_inventory
+
+SQLite catalog/stock/checkout persistence and bounded sync orchestration consuming pure
+model contracts. No Firebase or application imports. Android composition belongs
+to POS; real-file FFI is a test adapter. Financial facts, stock deltas, outbox and receipt recovery share one atomic database transaction. Migrations through v5 preserve earlier schemas. Cashier grant secrets belong in encrypted device storage, never this database.
+
 ### sarisupply_firebase
 
-Firebase adapters, bootstrap code, gateways, and infrastructure integration.
+Firebase adapters, bootstrap code, gateways, and infrastructure integration. Transport supplies encrypted-store grant secrets separately from immutable checkout intent. Camera lifecycle and the POS-only scanner dependency belong in `apps/pos`.
 
 ## Dependency direction
 
@@ -67,7 +73,7 @@ domain/contracts
 
 ## Backend boundaries
 
-Privileged Firebase mutations belong in Cloud Functions/server code rather than direct client writes.
+Privileged Firestore mutations belong in the trusted HTTPS server rather than direct client writes. The Functions workspace also runs local emulator tests; production Cloud Functions deployment is excluded by the approved free scope.
 
 Firestore Security Rules are defense in depth, not the sole authorization mechanism.
 

@@ -72,6 +72,7 @@ final class CashierLoginService {
         cashier.cashierId == cashierId &&
         cashier.credentialVersion == verified.credentialVersion &&
         cashier.status == 'active' &&
+        cashier.assignedBranchIds.contains(bundle.branchId) &&
         !cashier.mustChangePin);
     if (matching.isEmpty) {
       return const CashierLoginResult(CashierLoginStatus.requiresOnlineRefresh);
@@ -113,6 +114,27 @@ final class CashierLoginService {
     );
     if (decision != OfflineCredentialDecision.allowed) {
       return const CashierLoginResult(CashierLoginStatus.requiresOnlineRefresh);
+    }
+    final grant = verified.grant;
+    if (grant != null) {
+      final context = await _store.readDeviceContext(_deviceId);
+      if (grant.scope.deviceId != _deviceId ||
+          grant.scope.cashierId != cashierId ||
+          grant.scope.credentialVersion != verified.credentialVersion ||
+          grant.scope.merchantId != bundle.merchantId ||
+          grant.scope.branchId != bundle.branchId ||
+          context?.merchantId != bundle.merchantId ||
+          context?.branchId != bundle.branchId ||
+          now.isBefore(grant.issuedAt) ||
+          !now.isBefore(grant.expiresAt)) {
+        await _store.delete(_deviceId, cashierId);
+        return const CashierLoginResult(
+            CashierLoginStatus.requiresOnlineRefresh);
+      }
+      await _store.saveCheckoutGrant(grant);
+    } else {
+      // A legacy verification cannot revive a previously issued financial grant.
+      await _store.delete(_deviceId, cashierId);
     }
     await _store.save(record);
     return _signedIn(cashierId);

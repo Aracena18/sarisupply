@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
+import 'package:sarisupply_models/sarisupply_models.dart';
 
 import 'package:sarisupply_pos/features/cashier_auth/data/secure_offline_credential_store.dart';
 import 'package:sarisupply_pos/features/cashier_auth/data/offline_clock_source.dart';
@@ -26,6 +27,7 @@ class _MemoryKeys implements SecureKeyValueStore {
 }
 
 class _Cashiers extends Fake implements CashierRepository {
+  IssuedCashierGrant? grant;
   bool mustChangePin = false;
   int version = 1;
   DateTime now = DateTime.utc(2026, 9, 27);
@@ -51,6 +53,7 @@ class _Cashiers extends Fake implements CashierRepository {
       cashierId: cashierId,
       credentialVersion: version,
       mustChangePin: mustChangePin,
+      grant: grant,
     );
   }
 
@@ -109,6 +112,46 @@ void main() {
     );
   });
 
+  test(
+      'grant cache checks bundle binding and retains older grant for pending work',
+      () async {
+    await store.saveDeviceContext(StoredDeviceContext(
+        deviceId: 'device-1',
+        merchantId: 'merchant-1',
+        branchId: 'branch-a',
+        verifiedAt: now,
+        lastObservedWallClock: now,
+        clockAnchor: null));
+    IssuedCashierGrant issued(String id, {String branch = 'branch-a'}) =>
+        IssuedCashierGrant(
+            scope: CheckoutScope(
+                merchantId: 'merchant-1',
+                branchId: branch,
+                deviceId: 'device-1',
+                cashierId: 'cashier-1',
+                grantId: id,
+                credentialVersion: 1),
+            secret: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+            issuedAt: server.now,
+            expiresAt: server.now.add(const Duration(days: 7)));
+    server.grant = issued('old');
+    expect((await service.loginOnline('cashier-1', '123456')).status,
+        CashierLoginStatus.signedIn);
+    server.grant = issued('new');
+    await service.loginOnline('cashier-1', '123456');
+    expect(
+        (await store.activeCheckoutGrant('device-1', 'cashier-1'))!
+            .scope
+            .grantId,
+        'new');
+    expect(await store.readCheckoutGrant('device-1', 'old'), isNotNull);
+    server.grant = issued('foreign', branch: 'other');
+    expect((await service.loginOnline('cashier-1', '123456')).status,
+        CashierLoginStatus.requiresOnlineRefresh);
+    expect(await store.activeCheckoutGrant('device-1', 'cashier-1'), isNull);
+    expect(await store.readCheckoutGrant('device-1', 'foreign'), isNull);
+    expect(await store.readCheckoutGrant('device-1', 'old'), isNotNull);
+  });
   test('online permanent PIN enrolls only a derived verifier', () async {
     final login = await service.loginOnline('cashier-1', '123456');
     expect(login.status, CashierLoginStatus.signedIn);

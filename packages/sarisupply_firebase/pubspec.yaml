@@ -11,9 +11,11 @@ dependencies:
     sdk: flutter
   firebase_core: ^4.15.0
   firebase_auth: ^6.7.0
+  firebase_app_check: ^0.4.8
   cloud_firestore: ^6.10.0
   cloud_functions: ^6.5.0
   google_sign_in: ^7.2.0
+  http: ^1.6.0
   sarisupply_auth:
     path: ../sarisupply_auth
   sarisupply_models:

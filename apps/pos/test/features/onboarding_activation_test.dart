@@ -7,6 +7,8 @@ import 'package:sarisupply_pos/features/device_setup/presentation/device_setup_s
 import 'package:sarisupply_pos/features/owner_onboarding/presentation/merchant_application_screen.dart';
 
 class _Applications extends Fake implements MerchantApplicationRepository {
+  bool failSubmitOnce = false;
+  final draftIds = <String?>[];
   int saved = 0;
   String? submitted;
   @override
@@ -15,6 +17,7 @@ class _Applications extends Fake implements MerchantApplicationRepository {
       required Map<String, Object?> businessProfile,
       required Map<String, Object?> firstBranchDraft}) async {
     saved++;
+    draftIds.add(applicationId);
     expect(businessProfile['name'], 'Sari Store');
     expect(firstBranchDraft['code'], 'MAIN');
     return 'application-1';
@@ -22,6 +25,10 @@ class _Applications extends Fake implements MerchantApplicationRepository {
 
   @override
   Future<void> submit(String applicationId) async {
+    if (failSubmitOnce) {
+      failSubmitOnce = false;
+      throw StateError('private-token');
+    }
     submitted = applicationId;
   }
 }
@@ -46,7 +53,35 @@ class _Memberships extends Fake implements MembershipRepository {
       ];
 }
 
+class _CommittedApplications extends _Applications {
+  int commits = 0;
+  @override
+  Future<MerchantApplication?> getApplication(String id) async =>
+      MerchantApplication(
+          id: id,
+          applicantUid: 'owner',
+          status: MerchantApplicationStatus.pendingReview,
+          businessProfile: const {'name': 'Sari Store'},
+          firstBranchDraft: const {
+            'name': 'Main',
+            'code': 'MAIN',
+            'address': 'Davao'
+          },
+          submittedAt: DateTime.utc(2026),
+          reviewedAt: null,
+          reviewedBy: null,
+          reviewNotes: null,
+          approvedMerchantId: null);
+  @override
+  Future<void> submit(String id) async {
+    commits++;
+    throw StateError('Response lost after commit');
+  }
+}
+
 class _Devices extends Fake implements DeviceRepository {
+  bool failOnce = false;
+  final operations = <String>[];
   String? branchId;
   @override
   Future<DeviceActivation> activate(
@@ -58,12 +93,68 @@ class _Devices extends Fake implements DeviceRepository {
       required String operationId,
       bool keepHumanSignedIn = false}) async {
     this.branchId = branchId;
+    operations.add(operationId);
+    if (failOnce) {
+      failOnce = false;
+      throw StateError('uncertain-response');
+    }
     return DeviceActivation(
         deviceId: 'device-1', merchantId: merchantId, branchId: branchId);
   }
 }
 
 void main() {
+  testWidgets('server-committed submission advances after its response is lost',
+      (tester) async {
+    final applications = _CommittedApplications();
+    var advanced = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: SingleChildScrollView(
+                child: MerchantApplicationScreen(
+      applications: applications,
+      onSubmitted: () => advanced++,
+    )))));
+    for (final entry in {
+      'Business name': 'Sari Store',
+      'First branch name': 'Main',
+      'Branch code': 'main',
+      'Branch address': 'Davao'
+    }.entries) {
+      await tester.enterText(
+          find.widgetWithText(TextFormField, entry.key), entry.value);
+    }
+    await tester.tap(find.text('Submit application'));
+    await tester.pumpAndSettle();
+    expect(advanced, 1);
+    expect(applications.commits, 1);
+  });
+  testWidgets('submit retry keeps saved draft and hides exception details',
+      (tester) async {
+    final applications = _Applications()..failSubmitOnce = true;
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: SingleChildScrollView(
+                child: MerchantApplicationScreen(
+      applications: applications,
+      onSubmitted: () {},
+    )))));
+    for (final entry in {
+      'Business name': 'Sari Store',
+      'First branch name': 'Main',
+      'Branch code': 'main',
+      'Branch address': 'Davao'
+    }.entries) {
+      await tester.enterText(
+          find.widgetWithText(TextFormField, entry.key), entry.value);
+    }
+    await tester.tap(find.text('Submit application'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('private-token'), findsNothing);
+    await tester.tap(find.text('Submit application'));
+    await tester.pumpAndSettle();
+    expect(applications.draftIds, [null, 'application-1']);
+  });
   testWidgets('business and first branch are submitted for review',
       (tester) async {
     final applications = _Applications();
@@ -90,7 +181,7 @@ void main() {
   });
 
   testWidgets('device activation uses an authorized branch', (tester) async {
-    final devices = _Devices();
+    final devices = _Devices()..failOnce = true;
     var activated = 0;
     final membership = MerchantMembership(
         userId: 'owner-1',
@@ -116,6 +207,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Activate device'));
     await tester.pumpAndSettle();
+    expect(find.textContaining('uncertain-response'), findsNothing);
+    await tester.tap(find.text('Activate device'));
+    await tester.pumpAndSettle();
+    expect(devices.operations.length, 2);
+    expect(devices.operations[0], devices.operations[1]);
     expect(devices.branchId, 'branch-1');
     expect(activated, 1);
   });

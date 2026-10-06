@@ -1,0 +1,23 @@
+{
+  "workload": { "stores": 5, "receiptsPerStoreDaily": 200, "retentionDays": 90 },
+  "observations": {
+    "receiptReads": null,
+    "receiptWrites": null,
+    "receiptDeletes": null,
+    "receiptBytesIncludingIndexes": null,
+    "fixedDailyReads": null,
+    "fixedDailyWrites": null,
+    "fixedDailyDeletes": null,
+    "fixedStoredBytesIncludingIndexes": null,
+    "monthlyRequests": null,
+    "monthlyCpuMillis": null,
+    "monthlyEgressBytes": null,
+    "monthlyInstanceMemoryGiBHours": null
+  },
+  "evidence": {
+    "accountFreeVerified": false,
+    "trafficMeasured": false,
+    "firestoreMeteringVerified": false,
+    "retentionFeasibilityVerified": false
+  }
+}
