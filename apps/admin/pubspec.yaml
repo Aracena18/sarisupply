@@ -7,6 +7,8 @@ environment:
   sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
+  sarisupply_company:
+    path: ../../packages/sarisupply_company
   flutter:
     sdk: flutter
   firebase_core: ^4.15.0

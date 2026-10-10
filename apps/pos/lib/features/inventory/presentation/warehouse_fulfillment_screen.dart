@@ -436,7 +436,7 @@ class _WarehouseFulfillmentScreenState extends State<WarehouseFulfillmentScreen>
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Theme.of(ctx).colorScheme.primaryContainer.withAlpha(50),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(SariSupplyRadii.sm),
               ),
               child: Text(
                 'Note: Sealing this package will deduct physical stock and clear reserved stock from warehouse ${proposal.warehouseId}.',
@@ -883,12 +883,13 @@ class _WarehouseFulfillmentScreenState extends State<WarehouseFulfillmentScreen>
                               const Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.check_circle, color: Colors.green),
+                                  Icon(Icons.check_circle,
+                                      color: SariSupplyColors.success),
                                   SizedBox(width: 4),
                                   Text(
                                     'Manifest Sealed',
                                     style: TextStyle(
-                                      color: Colors.green,
+                                      color: SariSupplyColors.success,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -985,7 +986,8 @@ class _WarehouseFulfillmentScreenState extends State<WarehouseFulfillmentScreen>
                               child: const Text('Receive'),
                             )
                           else
-                            const Icon(Icons.check_circle, color: Colors.green),
+                            const Icon(Icons.check_circle,
+                                color: SariSupplyColors.success),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -1074,7 +1076,7 @@ class _WarehouseFulfillmentScreenState extends State<WarehouseFulfillmentScreen>
                                     'Reserved: ${stock.reservedQuantity}',
                                     style: TextStyle(
                                       color: stock.reservedQuantity > 0
-                                          ? Colors.orange.shade800
+                                          ? SariSupplyColors.orange700
                                           : null,
                                       fontSize: 12,
                                     ),
@@ -1084,8 +1086,8 @@ class _WarehouseFulfillmentScreenState extends State<WarehouseFulfillmentScreen>
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: stock.availableQuantity <= 0
-                                          ? Colors.red
-                                          : Colors.green.shade800,
+                                          ? SariSupplyColors.error
+                                          : SariSupplyColors.success,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -1115,31 +1117,31 @@ class _WarehouseFulfillmentScreenState extends State<WarehouseFulfillmentScreen>
   Color _statusColor(BuildContext context, RestockProposalStatus status) {
     switch (status) {
       case RestockProposalStatus.approved:
-        return Colors.blue.shade100;
+        return SariSupplyColors.info.withValues(alpha: 0.1);
       case RestockProposalStatus.picking:
-        return Colors.orange.shade100;
+        return SariSupplyColors.orange100;
       case RestockProposalStatus.picked:
-        return Colors.amber.shade100;
+        return SariSupplyColors.warning.withValues(alpha: 0.1);
       case RestockProposalStatus.packed:
       case RestockProposalStatus.dispatched:
       case RestockProposalStatus.received:
-        return Colors.green.shade100;
+        return SariSupplyColors.success.withValues(alpha: 0.1);
       default:
-        return Colors.grey.shade200;
+        return SariSupplyColors.divider;
     }
   }
 
   Color _poStatusColor(BuildContext context, PurchaseOrderStatus status) {
     switch (status) {
       case PurchaseOrderStatus.completed:
-        return Colors.green.shade100;
+        return SariSupplyColors.success.withValues(alpha: 0.1);
       case PurchaseOrderStatus.partiallyReceived:
-        return Colors.orange.shade100;
+        return SariSupplyColors.orange100;
       case PurchaseOrderStatus.submitted:
       case PurchaseOrderStatus.confirmed:
-        return Colors.blue.shade100;
+        return SariSupplyColors.info.withValues(alpha: 0.1);
       default:
-        return Colors.grey.shade200;
+        return SariSupplyColors.divider;
     }
   }
 
@@ -1168,45 +1170,61 @@ class _WarehouseFulfillmentScreenState extends State<WarehouseFulfillmentScreen>
                       }),
         ],
       ),
-      body: SariSupplyPageContent(
-        child: Column(
-          children: [
-            TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(icon: Icon(Icons.playlist_add_check), text: 'Pick & Pack'),
-                Tab(icon: Icon(Icons.local_shipping), text: 'PO Receiving'),
-                Tab(icon: Icon(Icons.warehouse), text: 'Stock Levels'),
-              ],
-            ),
-            if (_loading) const LinearProgressIndicator(),
-            if (_errorMessage != null)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: SariSupplyStatus(
-                  message: _errorMessage!,
-                  error: true,
-                ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 900),
+            child: Padding(
+              padding: EdgeInsets.all(
+                MediaQuery.sizeOf(context).width < 600
+                    ? SariSupplySpacing.md
+                    : SariSupplySpacing.lg,
               ),
-            if (_statusMessage != null)
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: SariSupplyStatus(
-                  message: _statusMessage!,
-                  icon: Icons.check_circle,
-                ),
-              ),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
+              child: Column(
                 children: [
-                  _buildFulfillmentTab(),
-                  _buildPoReceivingTab(),
-                  _buildStockLevelsTab(),
+                  TabBar(
+                    controller: _tabController,
+                    tabs: const [
+                      Tab(
+                          icon: Icon(Icons.playlist_add_check),
+                          text: 'Pick & Pack'),
+                      Tab(
+                          icon: Icon(Icons.local_shipping),
+                          text: 'PO Receiving'),
+                      Tab(icon: Icon(Icons.warehouse), text: 'Stock Levels'),
+                    ],
+                  ),
+                  if (_loading) const LinearProgressIndicator(),
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: SariSupplyStatus(
+                        message: _errorMessage!,
+                        error: true,
+                      ),
+                    ),
+                  if (_statusMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: SariSupplyStatus(
+                        message: _statusMessage!,
+                        icon: Icons.check_circle,
+                      ),
+                    ),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildFulfillmentTab(),
+                        _buildPoReceivingTab(),
+                        _buildStockLevelsTab(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );

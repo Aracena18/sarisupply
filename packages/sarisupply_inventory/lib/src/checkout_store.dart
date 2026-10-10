@@ -271,8 +271,10 @@ final class CheckoutStore {
         : CheckoutSale.fromMap(_body(rows.single['body']));
   }
 
-  Future<CheckoutSale> completeSale(CheckoutSale sale) =>
-      _db.transaction((tx) async {
+  Future<CheckoutSale> completeSale(CheckoutSale sale) async {
+    final trace = TimelineTask()..start('checkout.completeSale');
+    try {
+      return await _db.transaction((tx) async {
         final i = sale.intent;
         if (await _replay(tx, i)) return sale;
         final shift = await _shift(tx, sale.shiftId);
@@ -369,6 +371,11 @@ final class CheckoutStore {
             whereArgs: [sale.scope.deviceId, sale.scope.cashierId]);
         return sale;
       });
+    } finally {
+      trace.finish();
+    }
+  }
+
   Future<CheckoutSale?> unseenReceipt(String deviceId, String cashierId) async {
     final rows = await _db.query('checkout_recovery',
         where: 'device=? AND cashier=? AND seen=0',

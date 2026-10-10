@@ -6,6 +6,7 @@ import 'package:sarisupply_models/sarisupply_models.dart';
 import '../cashier_auth/domain/cashier_login_service.dart';
 import 'barcode_scanner_screen.dart';
 import 'checkout_controller.dart';
+import 'checkout_quantity_controls.dart';
 import 'payment_screen.dart';
 import 'receipt_screen.dart';
 import 'receipt_history_screen.dart';
@@ -42,7 +43,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   CheckoutController? _controller;
   final _search = TextEditingController();
   final _focus = FocusNode();
-  String? _loadError, _barcodeError;
+  String? _loadError;
   bool _routePending = false;
   @override
   void initState() {
@@ -86,7 +87,29 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   }
 
   void _changed() {
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    final message = _controller?.takeNotice();
+    final reviewPrices = _controller?.noticeNeedsPriceReview == true;
+    setState(() {});
+    if (message != null) {
+      _showNotice(message, reviewPrices: reviewPrices);
+    }
+  }
+
+  void _showNotice(String message, {bool reviewPrices = false}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+          action: reviewPrices && _controller?.draft?.lines.isNotEmpty == true
+              ? SnackBarAction(label: 'Review prices', onPressed: _prices)
+              : null,
+        ));
+    });
   }
 
   @override
@@ -125,25 +148,16 @@ class _CheckoutScreenState extends State<CheckoutScreen>
     try {
       await c.flush();
       if (!mounted) return;
-      final code = await Navigator.of(context).push<String>(MaterialPageRoute(
+      await Navigator.of(context).push<void>(MaterialPageRoute(
           builder: (_) => BarcodeScannerScreen(
+              checkout: c,
               camera: widget.cameraFactory?.call() ?? MobileBarcodeCamera(),
               authorize: () async {
                 if (!await c.revalidate()) throw StateError('Checkout locked');
               })));
-      if (!mounted || code == null) return;
-      final match = await c.barcode(code);
-      if (!mounted) return;
-      if (match == null) {
-        setState(() => _barcodeError = 'No product for $code');
-      } else {
-        await c.add(match.product, match.unit);
-        if (mounted) setState(() => _barcodeError = null);
-      }
     } on Object {
       if (mounted) {
-        setState(() =>
-            _barcodeError = 'Scan unavailable. Search or enter a barcode.');
+        _showNotice('Scan unavailable. Search or enter a barcode.');
       }
     } finally {
       if (mounted) setState(() => _routePending = false);
@@ -232,8 +246,7 @@ class _CheckoutScreenState extends State<CheckoutScreen>
       if (approved == true) await c.applyPrices(lines);
     } on Object {
       if (mounted) {
-        setState(
-            () => _barcodeError = 'Connect and sync before reviewing prices');
+        _showNotice('Connect and sync before reviewing prices');
       }
     }
   }
@@ -242,18 +255,21 @@ class _CheckoutScreenState extends State<CheckoutScreen>
   Widget build(BuildContext context) {
     final c = _controller;
     final appbar = sariSupplyTaskAppBar(context, title: 'Checkout', actions: [
-      IconButton(
-          tooltip: 'Receipts',
-          onPressed: c == null || _routePending
-              ? null
-              : () => _route(ReceiptHistoryScreen(controller: c)),
-          icon: const Icon(Icons.receipt_long_outlined)),
-      IconButton(
-          tooltip: 'Credit accounts',
-          onPressed: c == null || _routePending
-              ? null
-              : () => _route(CustomerCreditScreen(controller: c)),
-          icon: const Icon(Icons.account_balance_wallet_outlined)),
+      PopupMenuButton<String>(
+        tooltip: 'Checkout options',
+        enabled: c != null && !_routePending,
+        onSelected: (value) {
+          if (value == 'receipts') {
+            _route(ReceiptHistoryScreen(controller: c!));
+          } else if (value == 'credit') {
+            _route(CustomerCreditScreen(controller: c!));
+          }
+        },
+        itemBuilder: (_) => const [
+          PopupMenuItem(value: 'receipts', child: Text('Receipts')),
+          PopupMenuItem(value: 'credit', child: Text('Credit accounts')),
+        ],
+      ),
       IconButton(
           tooltip: 'Shift',
           onPressed: c == null || _routePending
@@ -286,6 +302,32 @@ class _CheckoutScreenState extends State<CheckoutScreen>
         appBar: appbar,
         body: SafeArea(
             child: Column(children: [
+          Center(
+              child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            const SizedBox(height: 8),
+                            TextField(
+                                key: const Key('product-search'),
+                                controller: _search,
+                                focusNode: _focus,
+                                decoration: const InputDecoration(
+                                    labelText: 'Search products',
+                                    prefixIcon: Icon(Icons.search)),
+                                textInputAction: TextInputAction.search,
+                                onChanged: c.search,
+                                onSubmitted: _submitSearch),
+                            const SizedBox(height: 12),
+                            FilledButton.tonalIcon(
+                                onPressed:
+                                    c.editable && !_routePending ? _scan : null,
+                                icon: const Icon(Icons.qr_code_scanner),
+                                label: const Text('Scan')),
+                          ])))),
           Expanded(
               child: SingleChildScrollView(
                   child: Center(
@@ -297,7 +339,8 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       if (c.authorization != null)
-                        Text(c.authorization!.branchName),
+                        Text(c.authorization!.branchName,
+                            style: SariSupplyTypography.cardHeading),
                       if (c.error != null)
                         SariSupplyStatus(message: c.error!, error: true),
                       if (c.shift == null)
@@ -320,51 +363,33 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                                 icon: const Icon(Icons.sync),
                                 label: Text(c.syncing ? 'Syncing…' : 'Sync')),
                           ]),
-                      const SizedBox(height: 8),
-                      TextField(
-                          key: const Key('product-search'),
-                          controller: _search,
-                          focusNode: _focus,
-                          decoration: const InputDecoration(
-                              labelText: 'Search products'),
-                          textInputAction: TextInputAction.search,
-                          onChanged: c.search,
-                          onSubmitted: _submitSearch),
-                      const SizedBox(height: 12),
-                      FilledButton.icon(
-                          onPressed:
-                              c.editable && !_routePending ? _scan : null,
-                          icon: const Icon(Icons.qr_code_scanner),
-                          label: const Text('Scan')),
-                      if (_barcodeError != null) ...[
-                        const SizedBox(height: 8),
-                        Text(_barcodeError!),
-                        TextButton(
-                            onPressed: () => _focus.requestFocus(),
-                            child: const Text('Search products'))
+                      if (c.query.trim().isNotEmpty ||
+                          cart == null ||
+                          cart.lines.isEmpty) ...[
+                        if (c.products.isEmpty)
+                          Padding(
+                              padding: const EdgeInsets.only(top: 16),
+                              child: Text(c.query.trim().isEmpty
+                                  ? 'Sync to load products'
+                                  : 'No products found')),
+                        for (final row in c.products)
+                          ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: ProductThumbnail(
+                                imageUrl: row.product.thumbnailUrl,
+                                productName: row.product.name,
+                                size: 44,
+                              ),
+                              title: Text(row.product.name),
+                              subtitle: Text(
+                                  '${row.product.sku} · ${row.quantity} ${row.product.baseUnit}\n${formatPhp(row.product.units.first.priceCentavos)} / ${row.product.baseUnit}'),
+                              onTap:
+                                  c.editable ? () => _pick(row.product) : null),
                       ],
-                      if (c.products.isEmpty)
-                        Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: Text(c.query.isEmpty
-                                ? 'Sync to load products'
-                                : 'No products found')),
-                      for (final row in c.products)
-                        ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: ProductThumbnail(
-                              imageUrl: row.product.imageUrl,
-                              productName: row.product.name,
-                              size: 44,
-                            ),
-                            title: Text(row.product.name),
-                            subtitle: Text(
-                                '${row.product.sku} · ${row.quantity} ${row.product.baseUnit}\n${formatPhp(row.product.units.first.priceCentavos)} / ${row.product.baseUnit}'),
-                            onTap:
-                                c.editable ? () => _pick(row.product) : null),
                       if (cart != null && cart.lines.isNotEmpty) ...[
                         const Divider(),
-                        Text('Cart',
+                        Text(
+                            'Cart · ${cart.lines.fold<int>(0, (sum, line) => sum + line.quantity)} items',
                             style: Theme.of(context).textTheme.titleLarge),
                         for (var n = 0; n < cart.lines.length; n++)
                           Padding(
@@ -372,9 +397,13 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  ProductThumbnail(
+                                  _CartProductPhoto(
+                                    key: ValueKey(
+                                        '${cart.lines[n].productId}:${cart.lines[n].unit}'),
+                                    store: c.store,
+                                    productId: cart.lines[n].productId,
+                                    revision: cart.lines[n].catalogRevision,
                                     productName: cart.lines[n].name,
-                                    size: 44,
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -390,33 +419,12 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                                         Wrap(
                                             crossAxisAlignment:
                                                 WrapCrossAlignment.center,
-                                            spacing: 8,
                                             children: [
-                                              Text(
-                                                  '${cart.lines[n].quantity} × ${cart.lines[n].unit}'),
-                                              IconButton(
-                                                  tooltip:
-                                                      'Decrease ${cart.lines[n].name} ${cart.lines[n].unit}',
-                                                  onPressed: c.editable
-                                                      ? () => c.quantity(
-                                                          n,
-                                                          cart.lines[n]
-                                                                  .quantity -
-                                                              1)
-                                                      : null,
-                                                  icon:
-                                                      const Icon(Icons.remove)),
-                                              IconButton(
-                                                  tooltip:
-                                                      'Increase ${cart.lines[n].name} ${cart.lines[n].unit}',
-                                                  onPressed: c.editable
-                                                      ? () => c.quantity(
-                                                          n,
-                                                          cart.lines[n]
-                                                                  .quantity +
-                                                              1)
-                                                      : null,
-                                                  icon: const Icon(Icons.add)),
+                                              CheckoutQuantityControls(
+                                                  key: ValueKey(
+                                                      '${cart.lines[n].productId}:${cart.lines[n].unit}'),
+                                                  controller: c,
+                                                  line: cart.lines[n]),
                                               IconButton(
                                                   tooltip:
                                                       'Remove ${cart.lines[n].name} ${cart.lines[n].unit}',
@@ -445,6 +453,12 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                               child: const Text('Discard cart'))
                         ]),
                       ],
+                      if (cart == null || cart.lines.isEmpty)
+                        Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            child: Text(c.products.isEmpty && c.query.isEmpty
+                                ? 'Cart is empty. Sync to load products, then scan or search.'
+                                : 'Cart is empty. Scan a barcode or search to add products.')),
                     ])),
           )))),
           if (cart != null && cart.lines.isNotEmpty)
@@ -466,4 +480,46 @@ class _CheckoutScreenState extends State<CheckoutScreen>
                             : 'Pay ${formatPhp(c.total)}')))),
         ])));
   }
+}
+
+/// Local lookup runs independently of checkout and never changes receipt data.
+class _CartProductPhoto extends StatefulWidget {
+  const _CartProductPhoto(
+      {super.key,
+      required this.store,
+      required this.productId,
+      required this.revision,
+      required this.productName});
+  final InventoryStore store;
+  final String productId, productName;
+  final int revision;
+  @override
+  State<_CartProductPhoto> createState() => _CartProductPhotoState();
+}
+
+class _CartProductPhotoState extends State<_CartProductPhoto> {
+  late Future<InventoryRow?> _product;
+  @override
+  void initState() {
+    super.initState();
+    _product = widget.store.getProduct(widget.productId);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CartProductPhoto oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.store != widget.store ||
+        oldWidget.productId != widget.productId ||
+        oldWidget.revision != widget.revision) {
+      _product = widget.store.getProduct(widget.productId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<InventoryRow?>(
+      future: _product,
+      builder: (context, snapshot) => ProductThumbnail(
+          productName: widget.productName,
+          imageUrl: snapshot.data?.product.thumbnailUrl,
+          size: 44));
 }

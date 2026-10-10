@@ -84,7 +84,7 @@ class _MerchantReviewDetailScreenState
         operationId: _operationId,
         reviewNotes: decision == 'reject' ? notes : null,
       );
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop(decision);
     } catch (error) {
       if (mounted) setState(() => _error = operationErrorMessage(error));
     } finally {
@@ -100,6 +100,10 @@ class _MerchantReviewDetailScreenState
   @override
   Widget build(BuildContext context) {
     final application = widget.application;
+    final submittedAt = application.submittedAt?.toLocal();
+    final submittedLabel = submittedAt == null
+        ? 'Submission date unavailable'
+        : 'Submitted ${MaterialLocalizations.of(context).formatMediumDate(submittedAt)}';
     return PopScope(
         canPop: !_busy,
         child: Scaffold(
@@ -113,6 +117,11 @@ class _MerchantReviewDetailScreenState
                         application.businessProfile['name']?.toString() ??
                             'Unnamed business',
                         style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 4),
+                    Text(
+                      submittedLabel,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                     const SizedBox(height: 16),
                     Card(
                         child: Padding(

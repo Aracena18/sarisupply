@@ -2,13 +2,17 @@
 
 SariSupply is an offline-first retail operating system and distribution platform built with Flutter clients and a Firebase backend direction.
 
-This file is the repository entry point for coding agents. Keep it short. Follow links to deeper documentation only when the current task needs them.
+This file is the repository entry point for coding agents. Keep it short. Read the canonical architecture first; follow other links only when the current task needs them.
 
 ## Start here
 
+Always read [the canonical system architecture](docs/architecture/SYSTEM_ARCHITECTURE.md) before planning, reviewing, or changing the system. It defines business ownership, roles, permissions, workflow ownership, and technical invariants. Its target capabilities are not proof of implementation.
+
 Read `design.md` before changing UI, UX, or user-facing copy.
 
-- Product and production architecture: `docs/architecture/SARI_SUPPLY_PRODUCTION_PLAN.md`
+- Canonical architecture: `docs/architecture/SYSTEM_ARCHITECTURE.md`
+- Rebuild task guide: [SARI_SUPPLY_TASKS.md](SARI_SUPPLY_TASKS.md) — execute only the selected task after its prerequisites are integrated; follow its model, scope, UI/UX, verification and handoff requirements.
+- Production roadmap and technical direction: `docs/architecture/SARI_SUPPLY_PRODUCTION_PLAN.md`
 - Engineering documentation index: `docs/engineering/README.md`
 - Current repository state: `docs/engineering/CURRENT_STATE.md`
 - Approved free production scope: `docs/superpowers/specs/2026-10-04-free-production-platform.md`
@@ -24,15 +28,16 @@ Read `design.md` before changing UI, UX, or user-facing copy.
 
 ## Context rule
 
-Read only the documentation needed for the task. Do not load every plan and specification by default.
+After the mandatory architecture read, load only documentation needed for the task. Do not load every plan and specification by default.
 
-Use this priority when sources disagree:
+Use this requirement priority when sources disagree:
 
 1. Explicit current task requirements.
-2. Approved design/specification for the affected milestone.
-3. `docs/engineering/CURRENT_STATE.md` for what is actually implemented.
-4. Architecture documentation.
-5. Existing implementation.
+2. Canonical architecture for ownership, roles, business boundaries, and system invariants.
+3. Approved milestone specifications consistent with that architecture.
+4. Implementation plans and existing code.
+
+Implementation evidence is separate: `docs/engineering/CURRENT_STATE.md` records status; inspect code and verification to establish actual behavior. Existing code must not silently redefine business ownership or permissions. Identify conflicts with older requirements before implementation. When an explicit user requirement changes architecture, record the decision in the canonical document and align the affected specification.
 
 Never treat an unchecked implementation-plan item as proof that code is absent. Inspect the repository first.
 
@@ -79,6 +84,26 @@ bash tool/verify_fast.sh
 ```
 
 ## Agent workflow
+
+### Android builds and in-place updates
+
+- Build APKs through `bash tool/build_client.sh <pos|admin|driver> <dev|prod> <apk-debug|apk-release> <public-settings.json>`. The settings must match the flavor and include a valid `SARISUPPLY_API_URL`; never ship a bare Flutter build that omits required defines. See `docs/engineering/FREE_BACKEND.md`.
+- Update an installed app with `adb -s <device-serial> install -r apps/<app>/build/app/outputs/flutter-apk/app-<flavor>-<debug|release>.apk`. Confirm the target device, package/flavor, signing certificate compatibility, and version code before installation. Preserve login, SQLite data, pending offline work, and App Check debug tokens.
+- Do not use `flutter install`, uninstall the app, or clear app data for routine updates. If Android rejects an update, diagnose the error and rebuild with compatible signing and a non-decreasing version code. Do not automatically uninstall or force a downgrade. Any necessary data reset requires explicit user approval and a recovery plan for pending work.
+- For development App Check failures, read the current device token from logcat and register it against the correct development Firebase project and Android app. Retry access without reinstalling. Never disable App Check enforcement, register development tokens in production, or commit debug tokens or credentials. If access still fails, verify the signed-in Google email matches the invitation.
+- Verify the installed app starts with the intended backend configuration and report whether company access or assignments loaded. A successful APK install alone does not prove login works.
+
+### Presentation build mode — 2026-10-06
+
+Current user direction: reuse working code, fix authorization and business
+ownership first, then build usable features across Admin, POS and Driver for the
+next-day presentation. The task guide is a reference backlog, not a requirement
+to execute every card or write a new contract/handoff for each small change.
+Use the reviewed AUTH-01 contract and canonical architecture. Keep plans and
+updates short; use one agent unless explicitly requested. Verify affected
+analysis/build and only critical authorization, money or durability unit checks.
+The user handles manual flow testing; defer full harnesses, emulator suites and
+UI test matrices. Preserve security, pending work and honest acceptance status.
 
 Use the streamlined builder workflow:
 

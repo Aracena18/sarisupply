@@ -1,3 +1,4 @@
+import 'package:sarisupply_company/sarisupply_company.dart';
 import 'dart:async';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -24,12 +25,14 @@ class CatalogScreen extends StatefulWidget {
       required this.gateway,
       required this.canUpload,
       required this.canEdit,
+      this.authorizationRevision = '',
       this.onAccessDenied,
       this.onLock});
   final String branchName;
   final Future<InventoryStore> Function() openStore;
   final InventoryGateway gateway;
   final bool canUpload, canEdit;
+  final String authorizationRevision;
   final Future<void> Function()? onAccessDenied;
   final VoidCallback? onLock;
   @override
@@ -41,6 +44,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
   List<InventoryRow> _rows = [];
   List<StockOperation> _operations = [];
   bool _formVisible = false;
+  bool _syncing = false, _accessDenied = false;
+  Future<void>? _syncWork;
   bool _busy = true, _more = false, _shortages = false, _archived = false;
   String _query = '';
   String? _error, _message;
@@ -75,7 +80,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   Future<void> _load() async {
     final store = _store;
-    if (store == null) return;
+    if (store == null || _accessDenied) return;
     final request = ++_request;
     try {
       final rows = await store.search(_query,
@@ -93,10 +98,17 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }
   }
 
-  Future<void> _sync() async {
-    if (_busy || _store == null) return;
+  Future<void> _sync() {
+    if (_syncWork != null) return _syncWork!;
+    final work = _syncNow();
+    _syncWork = work;
+    return work.whenComplete(() => _syncWork = null);
+  }
+
+  Future<void> _syncNow() async {
+    if (_syncing || _store == null || _accessDenied) return;
     setState(() {
-      _busy = true;
+      _syncing = true;
       _error = null;
       _message = null;
     });
@@ -115,16 +127,23 @@ class _CatalogScreenState extends State<CatalogScreen> {
       if (mounted &&
           error is FirebaseException &&
           ['permission-denied', 'unauthenticated'].contains(error.code)) {
+        _accessDenied = true;
+        _rows = [];
         await widget.onAccessDenied?.call();
       }
     } finally {
-      await _load();
-      if (mounted) setState(() => _busy = false);
+      if (!_accessDenied && mounted) await _load();
+      if (mounted) {
+        setState(() {
+          _syncing = false;
+          _busy = false;
+        });
+      }
     }
   }
 
   Future<void> _product([CatalogProduct? product]) async {
-    if (_busy || _store == null) return;
+    if (_busy || _accessDenied || _store == null) return;
     setState(() {
       _busy = true;
       _formVisible = true;
@@ -134,12 +153,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
           context: context,
           builder: (_) => ProductDialog(
               product: product,
+              merchantId: _store!.merchantId,
+              photoGateway: widget.gateway is ProductImageGateway
+                  ? widget.gateway as ProductImageGateway
+                  : null,
               onSave: (p, id) =>
                   widget.gateway.saveProduct(_store!.merchantId, p, id)));
       if (mounted) setState(() => _formVisible = false);
       if (saved == true && mounted) {
         setState(() => _busy = false);
-        await _sync();
+        unawaited(_sync());
       }
     } finally {
       if (mounted) {
@@ -152,7 +175,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
   }
 
   Future<void> _deleteProduct(CatalogProduct product) async {
-    if (_busy || _store == null) return;
+    if (_busy || _accessDenied || _store == null) return;
     final isDeleting = product.active;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -170,7 +193,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           FilledButton(
             style: isDeleting
-                ? FilledButton.styleFrom(backgroundColor: Colors.red)
+                ? FilledButton.styleFrom(
+                    backgroundColor: SariSupplyColors.error)
                 : null,
             onPressed: () => Navigator.of(ctx).pop(true),
             child: Text(isDeleting ? 'Delete' : 'Restore'),
@@ -189,7 +213,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
       final updated = product.copyWith(active: !isDeleting);
       final opId = const Uuid().v4();
       await widget.gateway.saveProduct(_store!.merchantId, updated, opId);
-      await _sync();
+      unawaited(_sync());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -365,8 +389,13 @@ class _CatalogScreenState extends State<CatalogScreen> {
   void dispose() {
     _debounce?.cancel();
     final store = _store;
-    if (store != null) unawaited(store.close());
+    if (store != null) unawaited(_closeAfterSync(store));
     super.dispose();
+  }
+
+  Future<void> _closeAfterSync(InventoryStore store) async {
+    await _syncWork;
+    await store.close();
   }
 
   String _price(int cents) =>
@@ -411,7 +440,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
         child: ExpansionTile(
           key: ValueKey(product.id),
           leading: ProductThumbnail(
-            imageUrl: product.imageUrl,
+            imageUrl: product.thumbnailUrl,
             productName: product.name,
             size: 48,
           ),
@@ -424,52 +453,35 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 '${row.quantity < 0 ? 'Short ${-row.quantity}' : '${row.quantity} in stock'} ${product.baseUnit}${row.unsettled > 0 ? ' · Sync pending' : ''}'),
             Text('${_price(base.priceCentavos)} / ${base.name}'),
             if (match != null)
-              Text(
-                  'Barcode match: ${match.name} · ${_price(match.priceCentavos)}',
+              Text('Match: ${match.name} · ${_price(match.priceCentavos)}',
                   style: const TextStyle(fontWeight: FontWeight.w700)),
           ]),
           children: [
             Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                          '${product.sku}${product.active ? '' : ' · Archived'}'),
+                          '${product.sku}${product.active ? '' : ' · Archived'}',
+                          style: Theme.of(context).textTheme.bodySmall),
                       for (final unit in product.units.skip(1))
                         Padding(
-                            padding: const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                                '${unit.name} (${unit.factor} ${product.baseUnit}) · ${_price(unit.priceCentavos)}')),
-                      if (widget.canUpload || widget.canEdit)
-                        Wrap(spacing: 8, runSpacing: 8, children: [
-                          if (widget.canEdit) ...[
-                            TextButton(
-                                onPressed:
-                                    _busy ? null : () => _product(product),
-                                child: const Text('Edit product')),
-                            TextButton(
-                                onPressed: _busy
-                                    ? null
-                                    : () => _deleteProduct(product),
-                                child: Text(
-                                  product.active ? 'Delete' : 'Restore',
-                                  style: TextStyle(
-                                    color: product.active
-                                        ? Colors.red
-                                        : Colors.green,
-                                  ),
-                                )),
-                          ],
-                          if (widget.canUpload && product.active) ...[
-                            TextButton(
-                                onPressed: _busy || row.unsettled > 0
-                                    ? null
-                                    : () => _count(row),
-                                child: Text(row.revision == 0
-                                    ? 'Opening stock'
-                                    : 'Record count')),
-                            TextButton(
+                                '${unit.name} (${unit.factor} ${product.baseUnit}) · ${_price(unit.priceCentavos)}',
+                                style: Theme.of(context).textTheme.bodySmall)),
+                      if (widget.canUpload || widget.canEdit) ...[
+                        const SizedBox(height: 12),
+                        Text('Stock',
+                            style: Theme.of(context).textTheme.titleSmall),
+                        const SizedBox(height: 8),
+                      ],
+                      if (widget.canUpload && product.active)
+                        LayoutBuilder(builder: (context, constraints) {
+                          final twoCol = constraints.maxWidth >= 360;
+                          final buttons = [
+                            FilledButton.tonalIcon(
                                 onPressed: _busy || _store == null
                                     ? null
                                     : () => Navigator.of(context).push(
@@ -478,8 +490,16 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                                 store: _store!,
                                                 product: product,
                                                 onReceived: _load))),
-                                child: const Text('Receive stock')),
-                            TextButton(
+                                icon: const Icon(Icons.download_outlined),
+                                label: const Text('Receive')),
+                            OutlinedButton.icon(
+                                onPressed: _busy || row.unsettled > 0
+                                    ? null
+                                    : () => _count(row),
+                                icon: const Icon(Icons.checklist_outlined),
+                                label: Text(
+                                    row.revision == 0 ? 'Opening' : 'Count')),
+                            OutlinedButton.icon(
                                 onPressed: _busy || _store == null
                                     ? null
                                     : () => Navigator.of(context).push(
@@ -488,8 +508,9 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                                 store: _store!,
                                                 row: row,
                                                 onAdjusted: _load))),
-                                child: const Text('Adjust stock')),
-                            TextButton(
+                                icon: const Icon(Icons.tune_outlined),
+                                label: const Text('Adjust')),
+                            OutlinedButton.icon(
                                 onPressed: _busy || _store == null
                                     ? null
                                     : () => Navigator.of(context).push(
@@ -498,38 +519,115 @@ class _CatalogScreenState extends State<CatalogScreen> {
                                                 store: _store!,
                                                 initialProduct: product,
                                                 onCompleted: _load))),
-                                child: const Text('Transfer stock')),
-                          ],
+                                icon: const Icon(Icons.swap_horiz_outlined),
+                                label: const Text('Transfer')),
+                          ];
+                          if (!twoCol) {
+                            return Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  for (var i = 0; i < buttons.length; i++) ...[
+                                    SizedBox(
+                                        height: 48,
+                                        width: double.infinity,
+                                        child: buttons[i]),
+                                    if (i < buttons.length - 1)
+                                      const SizedBox(height: 8),
+                                  ],
+                                ]);
+                          }
+                          return Column(children: [
+                            Row(children: [
+                              Expanded(
+                                  child:
+                                      SizedBox(height: 48, child: buttons[0])),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child:
+                                      SizedBox(height: 48, child: buttons[1])),
+                            ]),
+                            const SizedBox(height: 8),
+                            Row(children: [
+                              Expanded(
+                                  child:
+                                      SizedBox(height: 48, child: buttons[2])),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child:
+                                      SizedBox(height: 48, child: buttons[3])),
+                            ]),
+                          ]);
+                        }),
+                      if (widget.canEdit) ...[
+                        const Divider(height: 24),
+                        Text('Manage',
+                            style: Theme.of(context).textTheme.titleSmall),
+                        const SizedBox(height: 4),
+                        Row(children: [
+                          TextButton(
+                              onPressed: _busy ? null : () => _product(product),
+                              child: const Text('Edit')),
+                          const Spacer(),
+                          TextButton(
+                              onPressed:
+                                  _busy ? null : () => _deleteProduct(product),
+                              child: Text(
+                                product.active ? 'Delete' : 'Restore',
+                                style: TextStyle(
+                                  color: product.active
+                                      ? SariSupplyColors.error
+                                      : SariSupplyColors.success,
+                                ),
+                              )),
                         ]),
+                      ],
                     ]))
           ],
         ));
   }
 
+  Future<void> _openCompanyOrders() async {
+    final store = _store;
+    if (store == null || !widget.canEdit) return;
+    try {
+      final company = await CompanyOperationsFunctions.forDefaultApp()
+          .discover(store.merchantId);
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+          builder: (_) => CompanyOperationsScreen(
+                companyId: company.id,
+                title: company.name,
+                authorizationRevision: widget.authorizationRevision,
+                context: {
+                  'kind': 'store',
+                  'merchantId': store.merchantId,
+                  'branchId': store.branchId
+                },
+                retailStore: store,
+              )));
+      if (mounted) await _sync();
+    } catch (error) {
+      if (mounted) setState(() => _error = operationErrorMessage(error));
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: sariSupplyTaskAppBar(context, title: 'Inventory', actions: [
-        if (widget.canUpload)
-          IconButton(
-              onPressed: _busy || _store == null
-                  ? null
-                  : () => Navigator.of(context).push(MaterialPageRoute<void>(
-                      builder: (_) =>
-                          TransferScreen(store: _store!, onCompleted: _load))),
-              tooltip: 'Transfers',
-              icon: const Icon(Icons.swap_horiz)),
-        if (widget.canEdit)
-          IconButton(
-              onPressed: _busy || _store == null ? null : () => _product(),
-              tooltip: 'Add product',
-              icon: const Icon(Icons.add)),
         if (_store != null) ...[
           NotificationBell(store: _store!),
           PopupMenuButton<String>(
             tooltip: 'Operations',
             icon: const Icon(Icons.more_vert),
             onSelected: (val) {
-              if (val == 'restock') {
+              if (val == 'company') {
+                _openCompanyOrders();
+              } else if (val == 'transfers') {
+                Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) =>
+                      TransferScreen(store: _store!, onCompleted: _load),
+                ));
+              } else if (val == 'restock') {
                 Navigator.of(context).push(MaterialPageRoute<void>(
                   builder: (_) => RestockScreen(
                     store: _store!,
@@ -570,11 +668,24 @@ class _CatalogScreenState extends State<CatalogScreen> {
                 ));
               }
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(
+            itemBuilder: (context) => [
+              if (widget.canEdit)
+                const PopupMenuItem(
+                    value: 'company', child: Text('Order from SariSupply')),
+              if (widget.canUpload)
+                PopupMenuItem(
+                  value: 'transfers',
+                  enabled: !_busy,
+                  child: const ListTile(
+                    leading: Icon(Icons.swap_horiz),
+                    title: Text('Transfers'),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                ),
+              const PopupMenuItem(
                 value: 'reports',
                 child: ListTile(
-                  leading: Icon(Icons.analytics_outlined),
+                  leading: SariSupplyIcon(SariSupplyIconName.analytics),
                   title: Text('Reports & Z-Reading'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -598,7 +709,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               PopupMenuItem(
                 value: 'restock',
                 child: ListTile(
-                  leading: Icon(Icons.autorenew),
+                  leading: SariSupplyIcon(SariSupplyIconName.restock),
                   title: Text('Restock Orders'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -606,7 +717,7 @@ class _CatalogScreenState extends State<CatalogScreen> {
               PopupMenuItem(
                 value: 'warehouse',
                 child: ListTile(
-                  leading: Icon(Icons.warehouse),
+                  leading: SariSupplyIcon(SariSupplyIconName.inventory),
                   title: Text('Warehouse Ops'),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -623,7 +734,29 @@ class _CatalogScreenState extends State<CatalogScreen> {
       body: SariSupplyPageContent(
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        Text(widget.branchName, style: Theme.of(context).textTheme.titleMedium),
+        if (widget.canEdit && _store != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: OutlinedButton.icon(
+                onPressed: _busy ? null : _openCompanyOrders,
+                icon: const Icon(Icons.shopping_bag_outlined),
+                label: const Text('Order from SariSupply')),
+          ),
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: SariSupplySpacing.sm,
+          runSpacing: SariSupplySpacing.xs,
+          children: [
+            Text(widget.branchName, style: SariSupplyTypography.cardHeading),
+            if (widget.canEdit)
+              FilledButton.icon(
+                onPressed: _busy || _store == null ? null : () => _product(),
+                icon: const Icon(Icons.add),
+                label: const Text('Add product'),
+              ),
+          ],
+        ),
         const SizedBox(height: 16),
         TextField(
             decoration: const InputDecoration(
@@ -664,7 +797,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   icon: const Icon(Icons.sync),
                   label: Text(_store == null ? 'Retry' : 'Sync')),
             ]),
-        if (_busy && !_formVisible) const LinearProgressIndicator(),
+        if ((_busy || _syncing) && !_formVisible)
+          const LinearProgressIndicator(),
         if (_error != null) ...[
           const SizedBox(height: 12),
           SariSupplyStatus(message: _error!, error: true),
@@ -680,11 +814,10 @@ class _CatalogScreenState extends State<CatalogScreen> {
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: SariSupplyStatus(
                   message: _query.isNotEmpty || _shortages
-                      ? 'No matching products. Change your search or filters.'
-                      : 'No products saved. Sync to load your catalog.',
+                      ? 'No matches.'
+                      : 'No products. Sync to load.',
                   icon: Icons.inventory_2_outlined)),
         for (final row in _rows) _row(row),
-        if (_rows.length == 50)
-          const Text('Showing 50 matches. Refine your search.'),
+        if (_rows.length == 50) const Text('50 shown. Refine search.'),
       ])));
 }

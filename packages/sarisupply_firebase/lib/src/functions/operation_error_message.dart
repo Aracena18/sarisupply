@@ -33,8 +33,17 @@ String operationErrorMessage(Object error,
       'already-exists' =>
         'This record already exists. Refresh the list. For a cashier, reset the PIN.',
       'resource-exhausted' => 'Too many attempts. Wait and try again.',
-      'failed-precondition' =>
-        'This action is no longer available. Refresh and try again.',
+      'failed-precondition' => switch (error.message) {
+          'Available warehouse stock changed. Refresh the order.' =>
+            'Not enough available warehouse stock. Receive stock or propose smaller quantities, then try again.',
+          'Order changed. Refresh before continuing.' =>
+            'This order changed. Refresh to load its current quantities and status.',
+          'Order is not awaiting acceptance' =>
+            'This order was already processed. Refresh to see its current status.',
+          'Payment exceeds order value' =>
+            'This payment exceeds the remaining order balance. Refresh the order and enter no more than the unpaid balance.',
+          _ => 'This action is no longer available. Refresh and try again.',
+        },
       'invalid-argument' => 'Check the entered details and try again.',
       _ => fallback,
     };

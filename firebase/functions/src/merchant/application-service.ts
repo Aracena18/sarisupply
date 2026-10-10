@@ -1,8 +1,8 @@
-import { FieldValue } from 'firebase-admin/firestore';
-import type { Firestore } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import type { Firestore, Transaction } from 'firebase-admin/firestore';
 import { HttpsError } from 'firebase-functions/v2/https';
 import { writeAuditEvent } from '../common/audit';
-import { AuthorizationService } from '../common/authz';
+import { AuthorizationService, requireHuman } from '../common/authz';
 import type { AuthRequest } from '../common/authz';
 import { runIdempotent } from '../common/idempotency';
 import { requireDocumentId } from '../common/ids';
@@ -19,6 +19,7 @@ export interface ReviewInput {
   applicationId: string;
   decision: 'approve' | 'reject';
   operationId: string;
+  companyId?: string;
   reviewNotes?: string;
 }
 
@@ -27,6 +28,55 @@ export interface ReviewResult {
   status: 'approved' | 'rejected';
   merchantId?: string;
   branchId?: string;
+}
+
+function transactionalAuthorization(
+  db: Firestore,
+  transaction: Transaction,
+): AuthorizationService {
+  return new AuthorizationService(async (path) => {
+    const snapshot = await transaction.get(db.doc(path));
+    return snapshot.exists ? snapshot.data() ?? null : null;
+  });
+}
+
+function applicationTimestamp(value: unknown): string | null {
+  return value instanceof Timestamp ? value.toDate().toISOString() : null;
+}
+
+/** Company Owners may inspect only the submitted application fields. */
+export async function listPendingMerchantApplications(
+  db: Firestore,
+  request: AuthRequest,
+  inputCompanyId: string,
+): Promise<{ applications: Array<Record<string, unknown>> }> {
+  const companyId = requireDocumentId(inputCompanyId, 'company ID');
+  return db.runTransaction(async (transaction) => {
+    await transactionalAuthorization(db, transaction)
+      .requireCompanyRole(request, companyId, 'companyOwner');
+    const pending = await transaction.get(
+      db.collection('merchantApplications')
+        .where('status', '==', 'pending_review')
+        .orderBy('submittedAt', 'desc'),
+    );
+    return {
+      applications: pending.docs.map((document) => {
+        const data = document.data();
+        return {
+          id: document.id,
+          applicantUid: data.applicantUid,
+          status: data.status,
+          businessProfile: data.businessProfile,
+          firstBranchDraft: data.firstBranchDraft,
+          submittedAt: applicationTimestamp(data.submittedAt),
+          reviewedAt: applicationTimestamp(data.reviewedAt),
+          reviewedBy: data.reviewedBy ?? null,
+          reviewNotes: data.reviewNotes ?? null,
+          approvedMerchantId: data.approvedMerchantId ?? null,
+        };
+      }),
+    };
+  });
 }
 
 function requireObject(value: unknown, field: string): Record<string, unknown> {
@@ -150,23 +200,54 @@ export async function reviewMerchantApplication(
   if (input.decision !== 'approve' && input.decision !== 'reject') {
     throw new HttpsError('invalid-argument', 'Invalid review decision');
   }
+  const companyId = input.companyId === undefined
+    ? undefined
+    : requireDocumentId(input.companyId, 'company ID');
   const authorization = new AuthorizationService(async (path) => {
     const snapshot = await db.doc(path).get();
     return snapshot.exists ? snapshot.data() ?? null : null;
   });
-  const adminUid = await authorization.requirePlatformAdmin(request);
+  let companyReviewerUid: string | undefined;
+  let adminUid: string | undefined;
+  if (companyId !== undefined) {
+    await authorization.requireCompanyRole(request, companyId, 'companyOwner');
+    companyReviewerUid = requireHuman(request);
+  } else {
+    adminUid = await authorization.requirePlatformAdmin(request);
+  }
   const applicationRef = db.doc(`merchantApplications/${applicationId}`);
-  const adminRef = db.doc(`platformAdmins/${adminUid}`);
+  const adminRef = adminUid === undefined
+    ? undefined
+    : db.doc(`platformAdmins/${adminUid}`);
 
   return runIdempotent(`application-review:${applicationId}:${operationId}`,
     async (transaction) => {
-      const [application, admin] = await Promise.all([
-        transaction.get(applicationRef),
-        transaction.get(adminRef),
-      ]);
-      if (admin.data()?.status !== 'active') {
-        throw new HttpsError('permission-denied', 'Admin access denied');
+      const transactionAuthorization = transactionalAuthorization(db, transaction);
+      let reviewerUid: string;
+      let reviewerType: 'companyOwner' | 'platformAdmin';
+      if (companyId !== undefined) {
+        await transactionAuthorization.requireCompanyRole(
+          request,
+          companyId,
+          'companyOwner',
+        );
+        if (companyReviewerUid === undefined) {
+          throw new HttpsError('internal', 'Company reviewer identity is missing');
+        }
+        reviewerUid = companyReviewerUid;
+        reviewerType = 'companyOwner';
+      } else {
+        if (adminUid === undefined || adminRef === undefined) {
+          throw new HttpsError('internal', 'Platform reviewer identity is missing');
+        }
+        reviewerUid = adminUid;
+        reviewerType = 'platformAdmin';
+        const admin = await transaction.get(adminRef);
+        if (admin.data()?.status !== 'active') {
+          throw new HttpsError('permission-denied', 'Admin access denied');
+        }
       }
+      const application = await transaction.get(applicationRef);
       const data = application.data();
       if (!data) throw new HttpsError('not-found', 'Application not found');
       if (data.status === 'approved' && input.decision === 'approve') {
@@ -191,13 +272,15 @@ export async function reviewMerchantApplication(
         transaction.update(applicationRef, {
           status,
           reviewedAt: FieldValue.serverTimestamp(),
-          reviewedBy: adminUid,
+          reviewedBy: reviewerUid,
           reviewNotes,
           updatedAt: FieldValue.serverTimestamp(),
         });
         transaction.create(db.collection('applicationAuditEvents').doc(), {
           applicationId,
-          actorUid: adminUid,
+          actorUid: reviewerUid,
+          actorRole: reviewerType,
+          ...(companyId === undefined ? {} : { companyId }),
           action: 'merchantApplication.rejected',
           createdAt: FieldValue.serverTimestamp(),
         });
@@ -217,7 +300,7 @@ export async function reviewMerchantApplication(
         businessProfile,
         sourceApplicationId: applicationId,
         createdAt: now,
-        createdBy: adminUid,
+        createdBy: reviewerUid,
         updatedAt: now,
       });
       transaction.create(branchRef, {
@@ -229,7 +312,7 @@ export async function reviewMerchantApplication(
         operatingHours: firstBranchDraft.operatingHours ?? {},
         status: 'active',
         createdAt: now,
-        createdBy: adminUid,
+        createdBy: reviewerUid,
         updatedAt: now,
       });
       transaction.create(merchantRef.collection('memberships').doc(applicantUid), {
@@ -240,7 +323,7 @@ export async function reviewMerchantApplication(
         allBranches: true,
         branchIds: [],
         createdAt: now,
-        createdBy: adminUid,
+        createdBy: reviewerUid,
         updatedAt: now,
       });
       transaction.create(
@@ -254,7 +337,7 @@ export async function reviewMerchantApplication(
       transaction.update(applicationRef, {
         status,
         reviewedAt: now,
-        reviewedBy: adminUid,
+        reviewedBy: reviewerUid,
         reviewNotes: input.reviewNotes?.trim() || null,
         approvedMerchantId: merchantRef.id,
         approvedBranchId: branchRef.id,
@@ -262,13 +345,17 @@ export async function reviewMerchantApplication(
       });
       await writeAuditEvent({
         merchantId: merchantRef.id,
-        actorType: 'platformAdmin',
-        actorId: adminUid,
+        actorType: reviewerType,
+        actorId: reviewerUid,
         action: 'merchant.approved',
         targetType: 'merchant',
         targetId: merchantRef.id,
         operationId,
-        details: { applicationId, applicantUid },
+        details: {
+          applicationId,
+          applicantUid,
+          ...(companyId === undefined ? {} : { companyId }),
+        },
       }, transaction, db);
       return {
         applicationId,

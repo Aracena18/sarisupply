@@ -1,3 +1,23 @@
+DateTime _parseDeliveryDate(Object? value) {
+  if (value is DateTime) return value;
+  if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+  if (value is num) {
+    final epoch = value.abs() < 100000000000 ? value * 1000 : value;
+    return DateTime.fromMillisecondsSinceEpoch(epoch.round(), isUtc: true);
+  }
+  if (value is Map) {
+    final seconds = value['seconds'] ?? value['_seconds'];
+    final nanoseconds = value['nanoseconds'] ?? value['_nanoseconds'] ?? 0;
+    if (seconds is num && nanoseconds is num) {
+      return DateTime.fromMillisecondsSinceEpoch(
+        seconds.toInt() * 1000 + nanoseconds.toInt() ~/ 1000000,
+        isUtc: true,
+      );
+    }
+  }
+  return DateTime.now();
+}
+
 class DeliveryProof {
   const DeliveryProof({
     required this.id,
@@ -63,8 +83,7 @@ class DeliveryProof {
         recipientName: map['recipientName'] as String? ?? '',
         recipientRole: map['recipientRole'] as String? ?? '',
         signatureSvg: map['signatureSvg'] as String? ?? '',
-        deliveredAt: DateTime.tryParse(map['deliveredAt'] as String? ?? '') ??
-            DateTime.now(),
+        deliveredAt: _parseDeliveryDate(map['deliveredAt']),
         cashCollectedCentavos:
             (map['cashCollectedCentavos'] as num?)?.toInt() ?? 0,
         driverNotes: map['driverNotes'] as String? ?? '',

@@ -1,3 +1,4 @@
+import 'package:sarisupply_design_system/sarisupply_design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
 import 'package:sarisupply_models/sarisupply_models.dart';
@@ -152,8 +153,7 @@ class _MerchantApplicationScreenState extends State<MerchantApplicationScreen> {
               Padding(
                   padding: const EdgeInsets.only(top: 12),
                   child: Text(_error!,
-                      style: TextStyle(
-                          color: Theme.of(context).colorScheme.error))),
+                      style: TextStyle(color: SariSupplyColors.error))),
             if (_error != null && _draftId != null)
               TextButton(
                   onPressed: _busy ? null : _refreshStatus,

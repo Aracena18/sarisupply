@@ -2,6 +2,14 @@
 
 Updated: 2026-10-03
 
+**Historical snapshot:** The entries below preserve implementation and verification
+claims from the 2026-10-03 milestone. They are not the current implementation or
+deployment status, and older billing-dependent steps are superseded by the approved
+free production scope. Use [Current State](../engineering/CURRENT_STATE.md) for
+current status and [Canonical System Architecture](SYSTEM_ARCHITECTURE.md) for
+approved ownership, roles, and system invariants. Inspect code and current evidence
+before treating a historical capability or outstanding task as present-day truth.
+
 The production roadmap is in `SARI_SUPPLY_PRODUCTION_PLAN.md`. The Firebase identity, tenant, device, and cashier-auth milestone (Tasks 1–11) is implemented and merged into `main` in PR #2. The repository implementation is verified; live deployment and operational validation remain outstanding as listed below.
 
 ## Implemented

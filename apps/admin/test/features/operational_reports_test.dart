@@ -38,7 +38,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(MaterialApp(
-        theme: SariSupplyTheme.light(),
+        theme: SariSupplyTheme.light,
         builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context)
                 .copyWith(textScaler: const TextScaler.linear(2)),
@@ -49,6 +49,5 @@ void main() {
     expect(find.text('Rosa Store'), findsOneWidget);
     expect(find.text('₱12.50'), findsWidgets);
     expect(find.text('Branch 01 - Poblacion'), findsNothing);
-
   });
 }

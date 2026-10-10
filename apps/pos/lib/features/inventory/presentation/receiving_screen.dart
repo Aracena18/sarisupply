@@ -84,6 +84,7 @@ class _ReceivingScreenState extends State<ReceivingScreen> {
   }
 
   Future<void> _submit() async {
+    if (_submitting) return;
     if (_selectedProduct == null) {
       setState(() => _error = 'Please select a product');
       return;

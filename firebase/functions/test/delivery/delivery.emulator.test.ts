@@ -76,3 +76,52 @@ it('warehouse reassignment denies old-run proof and status without changing stoc
   expect((await db.doc(`${root}/branches/branch/stock/p`).get()).exists).toBe(false);
   expect((await db.doc(`${root}/delivery_runs/run`).get()).get('stops')[0].status).toBe('pending');
 });
+
+const locationCommand = (eventAtMs = Date.now(), overrides = {}) => ({
+  merchantId:'delivery-audit', action:'updateDriverLocation', runId:'run',
+  latitude:7.1, longitude:125.6, accuracyMeters:15,
+  capturedAt:new Date().toISOString(), eventAtMs, ...overrides,
+});
+it('GPS is owner-readable and overwrites only latest snapshot', async () => {
+  const now = Date.now();
+  expect(await manageDeliveries(db,driver,locationCommand(now))).toMatchObject({location:{driverId:'driver-audit',sharing:true}});
+  await manageDeliveries(db,driver,locationCommand(now+1,{latitude:7.2}));
+  expect(await manageDeliveries(db,owner,{merchantId:'delivery-audit',action:'readDriverLocation',runId:'run'}))
+    .toMatchObject({runId:'run',location:{latitude:7.2,driverId:'driver-audit'}});
+  expect((await db.collection(`${root}/driverLocations`).get()).size).toBe(1);
+  expect((await db.collection(`${root}/deliveryOperations`).get()).empty).toBe(true);
+});
+it('pause fences delayed GPS and duplicate pause preserves receipt time', async () => {
+  const now = Date.now(); await manageDeliveries(db,driver,locationCommand(now));
+  const before = (await db.doc(`${root}/driverLocations/run`).get()).get('receivedAt');
+  const pause = {merchantId:'delivery-audit',action:'pauseDriverLocation',runId:'run',eventAtMs:now+2};
+  await manageDeliveries(db,driver,pause); await manageDeliveries(db,driver,pause);
+  await expect(manageDeliveries(db,driver,locationCommand(now+1))).rejects.toMatchObject({code:'failed-precondition'});
+  expect((await db.doc(`${root}/driverLocations/run`).get()).data()).toMatchObject({sharing:false,receivedAt:before});
+});
+it('location denies impersonation, driver reads, other runs and businesses', async () => {
+  await expect(manageDeliveries(db,owner,locationCommand())).rejects.toMatchObject({code:'permission-denied'});
+  await expect(manageDeliveries(db,driver,{merchantId:'delivery-audit',action:'readDriverLocation',runId:'run'})).rejects.toMatchObject({code:'permission-denied'});
+  await db.doc(`${root}/delivery_runs/other`).set({driverId:'someone-else',warehouseId:'warehouse',status:'dispatched'});
+  await db.doc(`${root}/drivers/someone-else`).set({status:'active',warehouseId:'warehouse'});
+  await expect(manageDeliveries(db,driver,locationCommand(Date.now(),{runId:'other'}))).rejects.toMatchObject({code:'permission-denied'});
+  await db.doc('merchants/location-other-business').set({status:'active'});
+  await expect(manageDeliveries(db,driver,locationCommand(Date.now(),{merchantId:'location-other-business'}))).rejects.toMatchObject({code:'permission-denied'});
+  expect((await db.collection(`${root}/driverLocations`).get()).empty).toBe(true);
+});
+it('location rejects invalid coordinates, stale GPS and completed runs', async () => {
+  for (const overrides of [{latitude:91},{longitude:181},{accuracyMeters:-1},
+    {capturedAt:new Date(Date.now()-180000).toISOString()}]) {
+    await expect(manageDeliveries(db,driver,locationCommand(Date.now(),overrides))).rejects.toMatchObject({code:'invalid-argument'});
+  }
+  await db.doc(`${root}/delivery_runs/run`).update({status:'completed'});
+  await expect(manageDeliveries(db,driver,locationCommand())).rejects.toMatchObject({code:'failed-precondition'});
+});
+it('revoked or reassigned drivers cannot share or expose prior location', async () => {
+  await manageDeliveries(db,driver,locationCommand());
+  await db.doc(`${root}/drivers/driver-audit`).update({warehouseId:'other'});
+  await expect(manageDeliveries(db,driver,locationCommand())).rejects.toMatchObject({code:'permission-denied'});
+  await expect(manageDeliveries(db,owner,{merchantId:'delivery-audit',action:'readDriverLocation',runId:'run'})).rejects.toMatchObject({code:'permission-denied'});
+  await db.doc(`${root}/drivers/driver-audit`).update({status:'removed'});
+  await expect(manageDeliveries(db,driver,locationCommand())).rejects.toMatchObject({code:'permission-denied'});
+});

@@ -7,12 +7,16 @@ Use this workflow for implementation work in SariSupply. The objective is to mak
 Before editing:
 
 1. Read `AGENTS.md`.
-2. Read `docs/engineering/CURRENT_STATE.md`.
-3. Locate the approved specification or requirement for the task.
-4. Inspect the existing implementation and relevant tests.
-5. Identify the smallest set of files and boundaries affected.
+2. Read [the canonical system architecture](../architecture/SYSTEM_ARCHITECTURE.md), including role/ownership boundaries and current implementation gaps.
+3. Read `docs/engineering/CURRENT_STATE.md`.
+4. Locate the approved specification or requirement for the task and resolve conflicts using the precedence in `AGENTS.md`.
+5. Inspect the existing implementation and relevant tests.
+6. Identify the smallest set of files and boundaries affected.
 
 Do not assume a plan checkbox is implementation truth.
+Do not treat current code as authority to redefine business ownership or
+permissions. Record explicitly authorized architecture changes in the canonical
+document and align the affected specification before implementing them.
 
 ## 2. Plan
 

@@ -137,6 +137,19 @@ class _ManagementFormDialogState extends State<ManagementFormDialog> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Text(switch (action) {
+                      ManagementAction.branch =>
+                        'Set up a store location for branch assignments and POS device activation.',
+                      ManagementAction.cashier =>
+                        'Choose where this cashier can work. A temporary PIN will be shown after creation.',
+                      ManagementAction.invitation =>
+                        'The manager will accept this invitation with the same Google account. Choose their branch access below.',
+                      ManagementAction.access =>
+                        'Choose the branches this manager can access.',
+                    }),
+                  ),
                   if (action == ManagementAction.branch ||
                       action == ManagementAction.cashier) ...[
                     _field(
@@ -163,17 +176,23 @@ class _ManagementFormDialogState extends State<ManagementFormDialog> {
                     SwitchListTile(
                         contentPadding: EdgeInsets.zero,
                         title: const Text('All branches'),
+                        subtitle: const Text('Grant access across this store'),
                         value: _all,
                         onChanged:
                             _busy ? null : (v) => setState(() => _all = v)),
                   if (action != ManagementAction.branch && !_all) ...[
-                    const Text('Branches'),
+                    Text('Branch access',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text('${_branches.length} selected · Choose at least one'),
                     if (widget.branches.isEmpty)
                       const Text('Add an active branch first'),
                     for (final branch in widget.branches)
                       CheckboxListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(branch.name),
+                          subtitle: Text(branch.code),
+                          controlAffinity: ListTileControlAffinity.leading,
                           value: _branches.contains(branch.id),
                           onChanged: _busy
                               ? null
@@ -185,8 +204,7 @@ class _ManagementFormDialogState extends State<ManagementFormDialog> {
                   ],
                   if (_error != null)
                     Text(_error!,
-                        style: TextStyle(
-                            color: Theme.of(context).colorScheme.error)),
+                        style: TextStyle(color: SariSupplyColors.error)),
                 ],
               )),
         ));

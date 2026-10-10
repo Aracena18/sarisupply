@@ -1,12 +1,416 @@
 # SariSupply Current State
 
-**Last reviewed:** 2026-10-06
+**Last reviewed:** 2026-10-07
 
 This document describes the repository implementation; deployment and live-device validation are recorded separately.
+
+## Checkout cached product visibility — 2026-10-07
+
+The connected Development POS had 62 active cached products, but checkout hid
+catalog rows whenever search was blank. Checkout now shows the existing local
+catalog page while the cart is empty and during explicit search; an active cart
+retains its focused view. No inventory, authorization, receipt or outbox changes.
+The shared design contract reflects this correction.
+
+The new focused check reproduced the missing rows before the fix, then passed
+product selection, cart addition and searching with a cart. All 14 checkout screen
+and controller checks pass. Full POS analysis reports zero issues; formatting,
+architecture boundaries and the sanctioned Development debug APK build pass.
+Package, signing certificate and version compatibility were checked before the
+successful in-place update on vk55gmzh6tgabqey. First-install time was preserved.
+The app reopened and the device reached the signed-in scanner; final checkout
+product-list visual acceptance remains manual. Full harness/emulator tests remain
+deferred under presentation build mode.
+
+## Barcode scanner presentation refinement — 2026-10-07
+
+Removed the instructional paragraph and redundant item heading. The scanner
+prioritizes a larger rounded camera area with aiming guidance and compact
+Ready/Updating status. The last product has a bordered card with exact unit
+price and quantity controls. Added to cart, Scan again, Enter barcode and Done
+with total keep routine copy short; error/access recovery remains explicit.
+Continuous scanning, duplicate suppression and local-save confirmation are intact.
+
+Full POS analysis, architecture boundaries, 13 focused scanner/checkout checks
+and the sanctioned Development debug APK build passed. Phone/large-text layouts
+and camera/manual fallback were checked. The user authorized immediate installation;
+package/signing/version compatibility passed and the update installed in place on
+vk55gmzh6tgabqey, retaining the original first-install timestamp. The app reopened
+to cashier sign-in. Physical-camera acceptance awaits cashier login; full
+harness/emulator testing remains deferred.
+
+## POS checkout continuous scanning — 2026-10-07
+
+Checkout now keeps the scanner open across item additions and barcode misses.
+The scanner shows the last added product, exact selling unit/price, quantity
+controls and total. Held duplicate barcodes add once; + and Scan same item again
+allow deliberate repeats. Numeric quantity entry works from scanner and cart.
+Search/scanning and payment remain reachable around the scrolling cart; catalog
+results appear during explicit search. Manual barcode entry expands on camera
+failure. Scans pause during edits/saves, covered routes and inactive lifecycle;
+access is revalidated before scans. Addition confirmation follows durable saving.
+Existing authorization, quoted-price review, receipts and outboxes are preserved.
+
+Full POS analysis has zero issues. All 22 focused scanner, checkout, controller
+and payment checks passed, covering duplicate handling, direct quantity entry,
+barcode misses, durable restart, authorization denial, cash/QR and price review.
+Architecture boundaries and the sanctioned Development debug APK build passed.
+Full harness/emulator acceptance remains deferred under presentation build mode;
+physical barcode-camera usability still requires hands-on verification.
+The Development APK was installed in place on vk55gmzh6tgabqey after package,
+version and signing compatibility checks. The original installation timestamp
+was retained. The app process started and reached Google account selection;
+store workspace loading awaits user sign-in and is not verified by installation.
+
+## Driver presentation refinement — 2026-10-07
+
+Driver now prioritizes rider workspace selection, the next assigned stop and the
+current delivery stage. Signed-in workspace selection uses compact branding;
+company management roles are secondary. Route progress says “stops recorded,”
+with explicit partial-delivery and pending-sync labels. Primary actions use ink
+on orange for readable contrast. The saved delivery steps, money calculations,
+authorization, offline access and durable proof/draft behavior are unchanged.
+
+Driver/company-package analysis and nine focused phone/access/route checks pass.
+A matching Development APK was installed in place; cold launch and existing
+company/rider access loaded. No data reset was used. Live delivery flow acceptance
+remains a manual check.
+See [design critique and verification](../task-results/DRIVER-DESIGN-2026-10-07.md).
+Full-platform and manual delivery acceptance remain separate.
+
+## Development presentation inventory — 2026-10-07
+
+Development Firebase now contains 62 matching active products in Beta Store /
+Main branch and SariSupply warehouse Robert: 50 grocery demo items, including 20
+new groceries, plus the 12 existing test items. Both catalogs have matching base
+units, primary numeric demo barcodes and public photo links, with explicit 1:1
+store/company product mappings. The 113 unit barcodes have valid EAN-13 checksums;
+they are internal presentation numbers, not manufacturer GTINs. Photos are
+representative category photographs; existing managed store photos are preserved.
+
+The trusted Development-only seed utility checks current Owner authority and
+uses the existing catalog, opening-stock, warehouse receipt and mapping services.
+It added 32 missing retail stock records and 58 missing warehouse stock records;
+all 30 prior retail balances and four prior warehouse balances/revisions remain
+unchanged. Private backups and exact replay payloads are outside the repository.
+This seed changed no roles, security rules, API deployment or installed application.
+
+Live cloud comparisons passed. POS change feeds contain all 62 new catalog
+changes and 32 new stock changes without sequence gaps. Replaying a seeded item
+left stock, revisions and feed cursors unchanged. Server TypeScript build, script
+syntax and photo-link validation passed. Phone display acceptance remains a
+manual Sync/Refresh check; full harness/emulators remain deferred. See
+[seed evidence and grocery barcode list](../task-results/PRESENTATION-DATA-2026-10-07.md).
+
+## POS Reports & Archival UI — 2026-10-07
+
+Audited the phone’s Reports screen and all four tab layouts. Sales now emphasizes
+net sales, groups adjustments/payments/cash drawer figures, and places previews
+and clipboard exports near the summary. Stock separates retail value, unavailable
+cost/profit, stock status, expandable movements and product details. Short Sales,
+Stock, Backup and Printer navigation labels retain original tab indices and keep
+branch/device scope visible. Supporting rows/actions stack at enlarged text.
+
+Backup presents Create, Copy and Verify steps with plain password guidance,
+in-progress controls, guarded asynchronous UI updates and explicit temporary-copy
+semantics. Archive encryption, verification, retention and recovery paths are
+unchanged. Verification reports actual password/integrity checks without a
+misleading legacy sales count. Printer uses vertical paper-width choices and an
+honest preview-only explanation. Receipt previews use a full phone page or bounded
+wide dialog with scrollable receipt columns and one copy action; daily report
+previews explicitly identify placeholder shift/count metadata. Sales/stock
+calculations, server roles, local records and outboxes were not changed.
+
+Focused phone checks cover all four tabs, scroll/return navigation, paper-width
+selection, test-receipt preview and dismissal. The live phone capture caught
+a scroll/expansion state collision that initial layout-only checks missed; a
+regression reproduced the double-to-bool cast, and separate section storage keys
+corrected it. Material surfaces were also corrected for radio/expansion interaction
+rendering. Both corrections passed normal and enlarged-text checks. Formatting, POS analysis (zero issues),
+architecture boundaries and scoped whitespace checks passed. The sanctioned Development debug APK build passed. Matching package, signing
+certificate and version code were verified before an in-place update on
+vk55gmzh6tgabqey. The original first-install timestamp was preserved and the
+POS process reopened. The corrective build loaded the authenticated Main branch
+Overview with PHP 362.00 and two transactions. The phone remains on Overview;
+final report-tab visual acceptance is pending because automated taps are blocked.
+Full harness/emulator suites remain deferred
+under the presentation build workflow. Live backup/copy/verification and physical
+printer capabilities are not established by this layout check.
+
+## Store overview UI audit — 2026-10-07
+
+Captured the connected phone’s POS Store overview. The sales amount split across
+lines, repeated headings and a large scope disclaimer consumed the first screen,
+and low-stock rows did not distinguish unavailable products visually.
+
+The overview now uses compact store/branch context, a full-width net-sales card
+with transaction count and a secondary Sales report action, an expandable scope
+notice, and a primary Open inventory action. Stock rows separate product/SKU from
+quantity and explicit Out of stock / Low stock labels. Narrow or enlarged-text
+layouts stack groups; long monetary values scroll horizontally without shrinking
+text or breaking their digits. Existing local reads, summary calculations,
+branch selection, permissions and inventory/report routes are unchanged.
+
+Formatting, POS analysis (zero issues), architecture boundaries, whitespace checks
+and the sanctioned Development debug APK build passed. Matching package,
+signing certificate and version code were verified before a successful in-place
+update on vk55gmzh6tgabqey; its original first-install timestamp was preserved.
+The app reopened through Google account selection and then displayed authenticated
+Daily Sales reports with PHP 362.00 net sales and two transactions. Dashboard
+visual acceptance is pending: the phone remains in Reports and blocks automated
+taps. Screenshots are held under /tmp/sarisupply-dashboard-ui.
+Automated test suites, full harness and emulator matrices were deferred under
+the presentation build workflow; no business operation was performed.
+
+## Company Owner store application review — 2026-10-07
+
+Admin's More → Company page now includes an Applications tab for Company
+Owners. It lists pending store applications through a trusted backend command;
+the backend checks the current Company Owner membership for both list and
+review. Approval rechecks that role in the idempotent transaction that creates
+the store, first branch, and applicant's Owner membership. Rejection requires
+notes and records the reviewer and company in the application audit event.
+Warehouse Operations and Store Owner workspaces do not receive this screen. The
+separate Platform Admin review path remains available.
+
+The merchant-application query index is added to source configuration but has
+not been deployed. Admin and shared-package Dart analysis and the Firebase
+Functions TypeScript build pass. Emulator and live authenticated acceptance
+were not run for this change; public production availability is not established.
+
+## Replenishment and ordering — 2026-10-07
+
+Local source implements persistent catalog/cart ordering, cached bounded reads,
+branch delivery defaults, paginated low-stock suggestions with confirmed unit
+mappings, and separate warehouse sourcing requests. Cart edits make zero catalog
+reads in focused checks. Scoped analysis, TypeScript build, architecture checks
+and 59 focused checks pass. POS/Admin Development APKs and Admin web compile.
+Development backend revision `c4p3q7kqhh2n` is deployed and verified on the
+existing Development hostname after token refresh. Live endpoint/authentication
+smoke checks pass. Matching POS/Admin release APKs are installed and native
+startup checks pass. Authenticated manual acceptance and measured phone latency
+remain pending.
+
+An incorrectly configured Flutter Drive benchmark uninstalled the normal
+Development POS package during cleanup and removed its local data directory.
+The **03:17 backup and pre-benchmark release APK have now been restored**;
+Android reported successful reinstallation. Later unsynced changes cannot be
+confirmed recovered, and secure credentials may require fresh sign-in/device
+registration. Read-only canonical cloud evidence is preserved privately.
+Admin/Driver were not uninstalled. See
+[implementation, verification and incident details](../task-results/REORDER-2026-10-07.md).
+
+## Admin QR confirmation and order visibility — 2026-10-07
+
+Company order details offer QR confirmation only while the existing unpaid
+balance is positive. Excessive QR amounts now show a specific remaining-balance
+message instead of the generic unavailable-action message. Read-only Development
+inspection found the reported order already packed, with PHP 5.00 order value
+and PHP 5.00 confirmed QR payment; its next stage is delivery assignment.
+
+The redesigned Orders tab row no longer stretches against an unbounded vertical
+constraint inside its horizontal scroll view. This corrects the blank Orders
+page and restores access to Awaiting, Accepted, Ready and Completed queues.
+The packed order belongs in Ready; no historical order or payment was changed.
+
+The initial device update mistakenly installed an old unflavored `app-debug.apk`
+artifact dated September 28. It was replaced with a newly built
+`app-dev-release.apk`, using explicit Development flavor, environment and API
+origin. The signing certificate matches the previous Admin APK. The installed
+APK hash matches the new release artifact; app data and its original installation
+timestamp were preserved. The final Admin update left the user's POS app open.
+Scoped company analysis, all 11 existing order-queue checks and all four focused
+company fulfillment checks pass. The added QR check covers partial/full amounts,
+idempotent replay and rejection of an extra payment without another event or
+revision change. The Development release build passes. The user confirmed tabs
+and order rows appear; device capture shows one Awaiting order and two Ready
+orders. Live new-order acceptance and QR payment remain user manual checks.
+Full harness/emulator verification remains deferred.
+
+## Performance delivery — 2026-10-07
+
+Company operations now cache scoped datasets, share in-flight reads, cap reads at
+three, lazily load sections and retain visible rows during refresh. POS management
+retains section pages. Company pickers reuse loaded pages and debounce local
+SQLite search. Relevant saves invalidate affected loaded pages; company stock
+uses product stock projections. Driver proof saves commit locally before eligible
+background upload, while pending run projections remain visible and the existing
+seven-day same-boot authority restriction remains unchanged. Definitive denial
+clears display caches without discarding durable drafts/outboxes.
+
+Backend related-document reads are batched and authorization snapshots are reused
+only within one transaction attempt. No schema/dependency changes. Physical-phone
+profile benchmarks over 20 fixture repetitions measured warm-navigation p95
+240.63 → 20.25 ms and 20 → 0 extra reads; local search p95 14.16 ms and atomic
+local commit p95 at most 51.81 ms. These component measurements do not establish
+live server or full authenticated-flow performance. Scoped analysis, focused
+controller/authorization/durability checks and architecture boundaries pass.
+Admin/POS/Driver Development release APKs and Admin web compile. Matching-signature
+Android updates are installed with original first-install timestamps retained and
+no app data cleared; native startup smoke checks pass. Backend changes remain
+local; authenticated real user flow acceptance remains pending.
+See [scope, samples, builds and limits](../task-results/PERFORMANCE-2026-10-07.md).
+
+## Canonical architecture alignment — 2026-10-06
+
+The user approved and adopted [SYSTEM_ARCHITECTURE.md](../architecture/SYSTEM_ARCHITECTURE.md)
+as the business and system architecture contract. It establishes one supplying
+company serving independent store businesses, company-owned warehouses and riders,
+scoped warehouse operations, Store Owner-confirmed purchasing, and explicitly
+store-authorized replenishment summaries. Platform administration remains distinct
+from company operations. `AGENTS.md` and the engineering entry points now require
+reading this contract and separate requirement precedence from implementation evidence.
+
+This adoption changes documentation only. Legacy restocking/packing still uses
+same-merchant branch destinations; dispatch remains under merchant Owner authority
+in POS; legacy rider enrollment still uses account identifiers. Legacy
+Platform Admin retail/procurement reads are now denied. Additive company workspace,
+role and invitation support is described below; company-to-store orders, consent
+enforcement and separate receiving/ledger reconciliation remain unimplemented.
+Existing historical phase entries below do not imply these corrections are implemented.
+
+## Presentation build mode and company authorization workspace — 2026-10-06
+
+The user replaced per-card execution with reuse-first building across all three
+apps, authorization/ownership first, light verification and user-led manual
+testing. AUTH-01 remains the reviewed reference; contract version 1 is used for
+the additive company workspace API. No company identity or data is auto-promoted.
+
+The additive `authorizationVersion: 1` workspace API now discovers verified
+company Owner, Warehouse Operations and Rider contexts, and checks explicit role
+grants, current membership, revisions and company warehouse ownership on each
+operation. Admin has a company workspace for warehouse setup, invitations and
+staff-role management; Driver can review/accept invitations and see an assigned
+Rider context. Platform administration remains separate and limited to onboarding.
+Malformed store Owner scope fails closed. Trusted
+`firebase/functions/src/company/provision-owner.ts` tooling establishes a verified
+Google Company Owner with a role grant and discovery reference, transactional
+audit and stable operation ID. It refuses takeover, removed-access reactivation
+and a second supplying company; it is never a client command. It has been built
+and was run against the operator-selected verified Google identity in Development.
+
+Company purchasing, receiving/ledger reconciliation and company dispatch are
+still absent. Legacy POS dispatch remains merchant-Owner/branch scoped; Driver has
+no company-assigned deliveries yet. No company identity or store data is promoted,
+and existing store checkout, durable work and business IDs remain preserved.
+The Development API now routes invitation-response repair revision `faksa9a9xy7m`,
+which built successfully and was explicitly promoted on 2026-10-06. The stable
+Development URL previously served the older revision after the new build finished.
+Public smoke checks now return HTTP 405 (`POST required`) for GET on
+`getAuthorizationWorkspaces`, and HTTP 401 (`Authentication required`) for an
+unauthenticated POST. These checks establish command registration and the Auth
+gate, not authenticated role access. Hosted startup initially failed because
+Cloudinary uploads were enabled without available server settings; the Development
+setting was restored to `CLOUDINARY_UPLOADS_ENABLED=false`. Photo uploads remain
+disabled pending valid provider configuration. Company-owner provisioning passed
+in Development; authenticated live role/App Check checks and user-led device acceptance remain
+pending. No business data or credentials were migrated.
+
+Presentation access follow-up: after first Google sign-in, the operator-selected
+verified account was explicitly provisioned as Company Owner using the trusted
+tool and stable operation ID. No account was inferred from platform roles.
+Driver invitation discovery exposed a missing collection-group index on
+`invitations.recipientEmail`. The additive single-field index is recorded in
+`firebase/firestore.indexes.json`, deployed to Development, and its live query now
+passes after backfill. Admin adds warehouse invitation acceptance and Refresh
+access for an account awaiting a company role.
+
+Owner invitation repair: `listCompanyInvitations` now includes `companyId` in
+each row, as required by the shared client model. An existing pending Operations
+invitation in Development confirmed that creation had succeeded but the next
+owner-page refresh failed parsing, preventing further staff/Rider invitations.
+The repair preserves that invitation and current Owner-only authorization.
+Focused backend checks passed (19 tests), the architecture check passed, and a
+read-only check against Development Firestore returned the corrected row. The
+isolated backend built and was promoted to the existing Development URL; no APK
+change is required. The whole working-tree build remains blocked by unrelated
+TypeScript nullability errors in the in-progress company operations service;
+those commands were excluded from this isolated repair deployment. Phone invite
+and recipient-acceptance checks remain user-led; full harness/emulators remain
+deferred under presentation build mode.
+
+Admin dialog follow-up: the phone displayed Flutter's `_dependents.isEmpty`
+assertion after closing a company form. Focused tests reproduced premature
+`TextEditingController` disposal in staff invitations, warehouse setup, and
+Payment instructions. All three forms now wait for their dialog route to finish
+removing its fields before disposing controllers. Three regression checks, Admin
+analysis and the architecture check passed. The current-source Development APK
+built and installed with `adb install --no-streaming -r`, after a private Admin
+data backup. On-device navigation confirms Orders, Stock, Deliveries and More;
+the previous one-page layout came from the earlier isolated build and is gone.
+The owner page shows pending Operations and Rider invitations. Phone input
+injection is disabled, so manual dialog close/submit and recipient acceptance
+remain pending; no invitation was created or revoked during this verification.
+
+The observed Driver delivery error was a local SQLite foreign-key failure when
+assigned item snapshots referenced products absent from the Rider's retail
+catalog cache. Inventory schema v11 retains the delivery-stop reference and
+copies existing item rows while removing the unrelated product-catalog reference.
+Focused tests passed for uncached assigned products and v10 upgrade preservation
+of delivered/returned quantities, proof cash and pending operations (2 tests).
+No local database reset is required. Company dispatch remains absent.
+
+Verification: backend TypeScript build and focused authorization/command checks
+passed (17 tests); scoped Dart analysis passed with no issues. Admin, Driver and
+POS Development debug APK artifacts were produced. Full harness, emulators and
+UI matrices are deferred as requested. No device is connected for hands-on
+presentation acceptance.
 
 ## Product stage
 
 SariSupply is in early production-foundation development. The approved direction is a Flutter-only client architecture with POS, Driver, and Admin applications, shared Dart/Flutter packages, Firebase cloud services, and a SQLite catalog/stock ledger and outbox foundation.
+
+## Mobile brand UI refactor — 2026-10-06
+
+The operator selected the supplied SariSupply Design System v1 board as the
+visual source. POS, Admin, and Driver now use its paper backgrounds, white
+surfaces, orange actions, ink typography, supplied SVG identity and navigation
+icons, and shared spacing/radius tokens. Instrument Sans and the approved Inter
+fallback are bundled locally; the fallback supplies the peso glyph in price
+labels. Android launcher icons use the approved reverse symbol.
+
+Admin has labeled Applications/Purchasing/Reports navigation with lazily opened
+workspaces, retained search state, and Android Back recovery to Applications.
+POS toolbars have fewer competing actions, scan uses a secondary treatment,
+and inventory creation remains visible with its branch context. Report metrics
+use neutral surfaces and larger tabular values. Driver status contrast, route
+metadata wrapping, and narrow-phone delivery quantity controls were repaired.
+
+Focused checks passed for shared branding/theme, Admin review states and
+navigation retention, POS checkout with the keyboard, reports at 320px/200%
+text, and representative screen snapshots. Formatting, affected-app analysis,
+and architecture checks passed. The full harness is deferred under the
+build-focused instructions. Phone installation and live presentation acceptance
+are recorded separately; these checks do not establish full backend readiness.
+See [implementation scope](../superpowers/plans/2026-10-06-brand-ui.md).
+
+## Owner overview and management navigation — 2026-10-06
+
+Store Owners now land on an Overview. Phone navigation keeps Overview,
+Branches, Team, and Devices visible; Team exposes Cashiers, Managers, and
+Invitations as role-filtered subtabs. Wide screens retain side navigation.
+Overview shows today's local net sales and transaction count, the selected
+branch's products at or below the ten-unit restock threshold, and direct
+Sales report and Products & inventory actions. It states that sales are from
+this POS device and may omit other devices or unsynced activity. The existing
+authorization, management repositories, PIN controls, inventory ledger, and
+report calculations remain the data and mutation path.
+
+The owner-navigation test, management workflow tests, 320px/200% scaling check,
+management overview screenshot, POS analysis, and architecture check pass. A
+Development POS APK including this change is built. USB debugging has been
+authorized; phone reinstallation is pending because the phone is currently
+disconnected from ADB. The installed POS APK still has the previous management
+navigation. Live Owner workflows still need hands-on
+checkout and branch-stock acceptance. See [scope and invariants](../superpowers/plans/2026-10-06-owner-mobile-overview.md).
+
+Development APKs for POS, Admin, and Driver are installed on the connected
+phone using `adb install -r`, preserving app data. POS and Admin opened to their
+live store-management/review screens; the POS process log contained no fatal
+exception, unhandled Flutter exception, or App Check debug exchange failure
+during launch. Driver's existing workspace APK included the current app and
+design-system inputs. Hands-on checkout, stock change, and full backend workflow
+acceptance remain pending.
 
 ## Active usability audit
 
@@ -451,3 +855,516 @@ Implemented on 2026-10-05:
   - Full workspace `flutter analyze`: **0 issues found** across all 9 packages and apps.
   - Architecture check: PASS.
   - Fast unit tests: `catalog_test.dart` (3/3 PASS), `product_image_test.dart` (2/2 PASS), `product_dialog_test.dart` (PASS), `ui_redesign_test.dart` (28/28 PASS).
+
+## Foreground driver location sharing — 2026-10-06
+
+- Driver can start/stop sharing GPS for an assigned dispatched/in-transit run, or update now. Capture/upload is immediate and repeats every 30 seconds while foregrounded. Backgrounding pauses sharing; return resumes only the opted-in session; restart requires starting again. Permission and GPS recovery states are explicit.
+- POS Owner Dispatch provides a location card for an active route: coordinates, reported accuracy, capture/receipt times, sharing state, assigned stops, refresh and external Maps. Samples older than 90 seconds are last known. The dispatch/location lists share the page scroll area and dispatch has explicit refresh.
+- Trusted `manageDeliveries` actions `updateDriverLocation`, `pauseDriverLocation`, and `readDriverLocation` enforce current driver/run/warehouse/merchant authority. Only owners read snapshots. One latest snapshot per run replaces prior samples; stale samples and out-of-order uploads are rejected. Firestore client rules remain deny-by-default.
+- GPS samples never enter the durable delivery outbox. Failed uploads retain the last displayed success; delivery proofs, stock, cash and local business data are unaffected.
+- Foreground-only scope: no tracking during external Maps, screen lock or other apps; no embedded map, ETA, optimization or travel history. One-phone presentation demonstrates Driver capture followed by POS retrieval, not continuous movement across apps.
+- Added `geolocator_android` only to Driver for GPS/permission access and `url_launcher` to POS for external Maps. A 30-second schedule costs approximately 120 location writes per active driver/hour, plus pause writes. Normal update authorization reads five documents (merchant, driver, run, warehouse, previous snapshot); owner read costs eight reads, or seven when owner is also assigned driver. One continuously viewed route adds approximately 960 reads/hour; an active driver's samples add approximately 600 reads/hour, excluding retries and other application work. Free-tier operational capacity remains to be measured.
+- Local evidence: eight controller tests, two phone-layout/stale-location tests, and ten delivery emulator checks passed. Whole-workspace static analysis, architecture check and backend compilation passed. Full harness and final hardware acceptance remain deferred under build-focused instructions.
+- Development backend revision `3tjnmvj7yfvq` built successfully and was promoted to the existing Development URL; previous revision `42wrrxfpnyd4` remains available for rollback. Authenticated client acceptance and matching-signature APK installation are tracked separately below.
+
+- Live Development acceptance: authenticated owner catalog/stock feeds each return all 30 presentation products, and the assigned Driver identity reads its workspace and one dispatched run. Query indexes are READY. One packed presentation manifest is available; no sale or GPS fix was fabricated. The device should refresh Driver assignments when reconnected.
+- POS and Driver Development APKs rebuilt and installed as matching-signature updates; POS previously displayed Checkout with retained branch/access state, and Driver home was visually confirmed on-device. The Driver is now assigned to a dispatched presentation run. Both location permissions remain ungranted pending the driver’s choice; GPS upload and the POS location card still require a manual tap to grant permission and start sharing. Private POS/Driver data backups were saved before installation.
+- Build dependency correction: Driver uses the Android Geolocator implementation directly. The cross-platform wrapper pulled Linux geolocation/package-info dependencies and a second Android compiler toolchain; removing those irrelevant platforms preserves foreground GPS behavior and avoids their downloads.
+
+## Development presentation data — 2026-10-06
+
+The active Development store (`beta-store`, branch `main-branch`) now has 30 sample retail products with base/pack prices and opening branch stock, three added demo suppliers, eight added demo customers with no phone numbers or credit allowances, and two completed sample purchase orders that received 50 units per product into warehouse inventory. It has one active authenticated Driver, one packed sample replenishment manifest, and one dispatched delivery run. Seed writes used the deployed trusted command API; deterministic `demo-*` IDs and presentation notes identify the fixtures. No sales, customer credit, or GPS coordinates were fabricated.
+
+Development Firestore query indexes declared by the repository were deployed because the Driver route query was returning an internal error. The composite route indexes are READY; authenticated tests now read one driver workspace and the dispatched run. The phone disconnected before its final assignment refresh. Additional usable Drivers require additional Google-authenticated accounts; no placeholder identities were created.
+
+## Cloudinary product photos (2026-10-06)
+
+Local implementation adds Owner camera/gallery photo selection in POS, signed
+Cloudinary upload and server verification through the existing Deno HTTPS gateway,
+atomic managed-image attachment/removal in catalog saves, backward-compatible
+image delta/SQLite serialization, public optimized catalog/checkout images,
+bounded Android disk caching, free-usage/daily-upload safeguards and a retryable
+operator cleanup command. No financial record schema or offline financial outbox
+changes. Existing preset/custom HTTPS URLs remain supported.
+
+Uploads default disabled. The selected SariSupply Cloudinary credentials are
+validated and stored in the private local Development environment file outside
+the repository. The operator configured the Deno Production runtime context for
+the Development app; the secret remains masked and the upload flag is false.
+Deployment of the Cloudinary-enabled backend, live upload/cross-device sync,
+camera/permission and offline-device acceptance remain pending. See
+[CLOUDINARY_PRODUCT_PHOTOS.md](CLOUDINARY_PRODUCT_PHOTOS.md) for private setup,
+limits, acceptance and rollback. Heavy harness/emulator suites remain deferred.
+
+
+Local Cloudinary verification: nine-package analysis clean, TypeScript build and
+architecture check passed, 23 focused checks passed, and Android POS Development
+APK compiled successfully. This does not establish hosted or real-device acceptance.
+
+
+## Company ordering and dispatch — 2026-10-06
+
+Presentation implementation reuses reviewed AUTH-01 authorization, trusted HTTPS
+commands, retail catalog/stock feeds and existing role invitations. New company
+records stay under `companies/{companyId}`; company stock never uses a retail
+merchant as its owner. The shared `packages/sarisupply_company` feature serves
+Admin company operations, POS Store Owner ordering and Driver assigned runs.
+
+Implemented: company products with immutable SKU/base unit and revision-checked
+prices; opening/incoming stock; reservation, picking, packing, shortage proposals
+and store approval; ordered multi-stop dispatch; assigned Rider quantity/recipient
+proof and cash collection; Store Owner receipt with explicit retail unit mapping;
+warehouse return quarantine and manual QR/cash remittance reconciliation. Each
+mutation rechecks current authority and uses an immutable operation receipt and
+audit record. Duplicate proof/receipt operations cannot add stock or cash twice.
+Zero receipt quantities create no empty stock-feed event. Receipt stock reaches
+POS through its existing stock sync after leaving company orders.
+
+Driver proof and run projections are stored atomically in separate company/user/role
+SQLite storage. Pending and blocked evidence survives restart; offline recording
+requires verified same-boot authority within seven days, and reconnect rechecks
+current assignment. Store receipt stays an offline draft until server acceptance.
+Admin web uses scoped browser storage for drafts and operation IDs; Rider work
+requires Android. Existing retail/legacy delivery records and outboxes remain.
+
+Development backend revision `pwqma683s9v5` built and promoted at the existing
+Development URL; rollback revision `wz78ghppq0ty` remains available.
+Android Admin, POS and Driver Development APKs built and installed with
+`adb install --no-streaming -r` on device `vk55gmzh6tgabqey`; no uninstall or
+application-data clearing. Admin web compiled locally; web hosting was not updated.
+On-device Admin navigation visibly contains Orders, Stock, Deliveries and More.
+A subsequent device hierarchy showed the selected warehouse, a saved company
+product and its available/reserved/in-transit/quarantine balances, with Receive
+stock/Edit price actions; authenticated catalog display is observed. This does
+not establish a complete order/delivery/receipt acceptance trace.
+
+Verification: `npm run build`;
+`npx vitest run test/company/operations.test.ts test/https/commands.test.ts test/common/authz.test.ts`
+(20 passed); `flutter test test/company_work_store_test.dart` from inventory
+(1 passed); scoped Dart analysis and `dart tool/check_architecture.dart` passed.
+All three Android builds used `flutter build apk --debug --flavor dev
+--dart-define=SARISUPPLY_ENV=dev
+--dart-define=SARISUPPLY_API_URL=https://aracena18-sarisupply-dev-api.aracena18.deno.net`.
+Admin additionally passed `flutter build web` with the same environment/API defines.
+Hosted command GET returns 405 and Development-header unauthenticated POST returns
+401; these establish route/authentication gates, not authenticated business-flow
+acceptance. Source self-review and scoped diff whitespace verification completed.
+
+Pending manual gates: real Store Owner order and retail product mapping; company
+stock counts; invited Google-authenticated Warehouse Operations/Rider accounts;
+partial delivery, reconnect, return discrepancy and actual money verification;
+free-tier traffic capacity. Company delivery proof currently captures recipient
+name/role and quantities, without a signature image. Existing legacy foreground
+GPS remains available on its legacy flow; company runs do not yet expose live
+location sharing. Warehouse and Rider selection reads are currently bounded to
+100 records; larger organizations require pagination. One warehouse/shipment per
+order; at most 20 lines/order and 20 stops/run. No upstream purchase orders,
+automatic QR verification, live migration, paid fallback or production acceptance.
+Heavy harness/emulator/UI matrices remain deferred under presentation build mode.
+
+Manual starting point: Admin → More → add warehouse/invite staff; Admin → Stock →
+add company product and receive opening stock; POS Owner → Inventory → Order from
+SariSupply; Admin → Orders → accept/pick/pack; Deliveries → create/dispatch run;
+Driver → record delivery; POS Owner → confirm actual receipt; Admin → receive
+returns and record actual remittance.
+
+
+## Checkout notice and stale-price recovery — 2026-10-06
+
+POS no longer reports every failed cart addition as a cart-limit/price error.
+Stale quotes offer the existing explicit Review prices flow in a transient popup;
+quantity, barcode and scan notices dismiss instead of staying in the page.
+Access denial and unresolved durable-save/sync states stay visible. Successful
+cart edits and price approval clear old edit errors. Focused controller checks
+cover persisted repeated additions, rejected changed quotes retaining original
+quantities/prices, explicit price approval followed by successful addition, and
+the 20-product cart boundary with existing quantity increments, and
+the existing observed-denial authorization race (3 passed). No cart limits,
+financial snapshots, live stock, receipts or pending operation IDs were altered.
+The reported device failure was not captured during inspection; the phone was
+in checkout and performing sales. A stale-price rejection was reproduced locally.
+The user subsequently reported that clearing a full cart allowed purchasing,
+consistent with the cart boundary. Checkout now shows product/line counts and
+identifies that limit directly; it preserves the cart instead of clearing it.
+
+Scoped checkout analysis and diff whitespace checks passed. Development POS APK
+rebuilt and installed with `adb install --no-streaming -r` on the connected
+phone; the app was reopened. Updated popup dismissal and cart count still require
+the user's manual device check.
+
+
+## Company order acceptance shortage — 2026-10-06
+
+Read-only Development inspection found the submitted order requesting one unit
+each of two company products whose selected warehouse stock was zero. The
+server correctly prevented reservations exceeding available company stock.
+The shared client previously hid that reason behind a generic failed-precondition
+message. Known warehouse-shortage, stale-order revision and already-processed
+order errors now display specific recovery instructions; retry classification
+continues to use codes. No stock or order state was changed by inspection.
+Receive actual warehouse stock or propose smaller quantities before acceptance.
+Focused Dart analysis and whitespace checks passed; no automated tests added
+for this message-only correction.
+
+Admin Development APK rebuilt, installed as a preserving update and reopened
+on the connected phone. Acceptance after receiving actual stock remains a user
+manual gate.
+
+## Rider delivery amount review — 2026-10-07
+
+The legacy Driver stop completion screen displays each delivery manifest unit
+amount, its delivered line amount, and the total value for delivered quantities.
+The cash field shows that total as its maximum and validates before local save,
+using the same manifest amounts as the existing local and trusted-server cash
+checks. The legacy manifest still does not distinguish company purchase cost
+from an agreed wholesale selling price; do not treat its amount as a new pricing
+contract or add a separate delivery fee without an approved data source.
+
+Driver Development analysis passed with no issues. The Development `devDebug`
+APK built and was installed in-place with `adb install -r` on device
+`vk55gmzh6tgabqey`, preserving the existing app installation and local data. It
+was reopened and its process confirmed running. Rider quantity, return, amount
+display and cash-limit checks remain for the user's manual phone test. Full
+harness verification is deferred under the active presentation build workflow.
+
+
+## Company Rider route presentation — 2026-10-07
+
+Driver had separate presentation paths: legacy merchant assignments opened the
+redesigned DriverHomeScreen, while company-invited riders opened the shared
+CompanyOperationsScreen. Company riders now use the approved flat My Route layout:
+route progress, a compact next stop with units and COD, two upcoming stops, a
+collapsed completed row, and a sticky directions/proof CTA. The route name falls
+back to ordered destination names because current run records do not carry a
+route-name field. Directions and proof still use the existing callbacks, company
+form, current authorization checks, scoped storage and durable outbox; no records
+or roles were migrated. Pull-to-refresh, pagination, account/workspace controls,
+and pending/error notices remain. GPS and signature capture are unsupported for
+company runs. Admin and Store Owner layouts are unchanged.
+
+Verification: formatting, Driver analysis and targeted analysis of the changed
+company rider route pass. Whole-company-package analysis reports the pre-existing
+flow-control-braces lint in order_shop_screen.dart, outside this change. The
+Development debug APK was rebuilt and installed in-place on vk55gmzh6tgabqey;
+package, version and signing certificate matched, and first-install time was
+preserved. The account exposes a Rider workspace with one warehouse; its loaded
+run is 1/1 complete, so the screen shows Finish route without upcoming stops.
+Device input injection is restricted, leaving workspace entry for the user's tap.
+Full harness/emulator matrices remain deferred under presentation build mode.
+
+The sanctioned build_client.sh command built the Development debug APK with
+client.dev.json. Installed package, version code and signing certificate matched;
+adb install --no-streaming -r succeeded on vk55gmzh6tgabqey. Driver reopened and
+its process was running. Device UI automation returned no root node, so visual
+acceptance with the invited account and actual delivery submission remain for
+the user's manual phone check. No uninstall or application-data clearing occurred.
+
+
+## Item Requests blank page correction — 2026-10-07
+
+ItemRequestsScreen nested a ListView inside SariSupplyPageContent's existing
+SingleChildScrollView, producing “Vertical viewport was given unbounded height”
+and preventing request, empty and error content from rendering. The screen now
+uses a stretching Column inside the existing page scroll area. Request loading,
+warehouse/store scope, response actions, pagination and server authorization
+are unchanged. This shared correction applies to Admin and Store Owner entry.
+
+Three focused widget checks reproduced the failure before the change and passed
+afterward: populated phone content and scrolling, empty state, and failed-read
+recovery with refresh. Admin and POS analysis, affected shared-source analysis,
+formatting and architecture checks passed. The sanctioned Admin Development APK
+build passed; matching package, version and signing certificate were verified
+before adb install --no-streaming -r succeeded on vk55gmzh6tgabqey. Admin was
+reopened without uninstall or app-data clearing. The POS APK was not rebuilt.
+Live Item Requests navigation/data and response submission remain user manual
+checks. Full harness/emulator matrices remain deferred under presentation mode.
+
+
+## Store Owner Item Requests delivery and navigation correction — 2026-10-07
+
+The reported blank page concerned Store Owner POS Inventory, not Admin. The
+previous shared layout fix had only been delivered through an Admin APK update.
+A focused POS test now verifies store request creation and refreshed history,
+with warehouse response/close controls absent. POS analysis and the sanctioned
+Development APK build passed. Package, signing certificate and version matched
+the installation; adb install --no-streaming -r succeeded without clearing data.
+POS was reopened; device automation returned no root node, so real sourcing
+request submission remains a manual acceptance check.
+
+Admin retains incoming sourcing requests as a distinct warehouse-scoped Orders
+→ Requests action beside the order-status tabs. The loose link underneath the
+Orders header was removed. Store Owner request placement remains Inventory →
+Order from SariSupply → Request an item / View requests. No stock, membership,
+backend permissions, request mutations or durable storage changed. Three existing
+request UI checks, Admin analysis, affected shared-source analysis, formatting
+and architecture checks passed. Admin Development APK also built and installed
+as a compatible in-place update.
+Full harness/emulator matrices remain deferred under presentation mode.
+
+
+## Warehouse Stock blank header and owner controls — 2026-10-07
+
+The redesigned Stock header stretched its horizontal filter Row vertically
+inside an unbounded sliver, causing “BoxConstraints forces an infinite height.”
+This prevented rendering the header and its existing owner product creation and
+stock receipt controls. The header now uses natural filter heights, preserving
+its Warm Utility layout. Company Owners see Add product; scoped operations see
+Receive stock. Initial loading shows a labeled state and unavailable writes stay
+disabled. Refresh stock is explicit. Existing server role checks, stock ledger,
+product forms, warehouse filters and scoped page cache remain intact. No backend
+query or network timeout was changed.
+
+The original stretching layout reproduced failures in both new header checks;
+the corrected sliver render/action and loading-state checks pass. Seven existing
+controller checks also pass, covering warm-cache reuse, coalescing, page retention
+and scope/late-response safety. Admin and affected shared-source analysis,
+formatting, architecture checks and sanctioned Admin Development APK build passed.
+Matching signing, package and version were verified before a successful preserving
+adb install --no-streaming -r on vk55gmzh6tgabqey; Admin was reopened.
+Live Stock navigation, actual item creation/stock receipt and end-to-end network
+latency remain manual phone acceptance checks. The rendering failure explains
+the blank page; a measured one-minute backend delay was not established.
+Full harness/emulator suites remain deferred under presentation build mode.
+
+
+## Warehouse product sheet UX review — 2026-10-07
+
+Captured the user's open phone screen: Admin Stock with Another1's product-details
+sheet. The audit found an undifferentiated stock text block, equally emphasized
+receiving/edit/correction actions, a transit-write-off action at zero transit, and
+an inactive barcode affordance in the background header.
+
+The sheet now groups availability/status and reserved/transit/quarantine balances
+with explicit units, SKU, wholesale price and warehouse context. Receive stock is
+a reachable primary button; product edits are grouped and Stock corrections are
+collapsed. Transit write-off appears only with nonzero transit and uses destructive
+color. The Stock header prioritizes receiving, gives product creation a secondary
+button and stacks controls on small screens/large text. Search uses a real clear
+action instead of an inactive scanner. Existing action dispatch, role restrictions,
+stock forms, server mutations, durable data and navigation remain intact.
+
+Four focused UI checks passed, including the product sheet at 320 logical pixels
+with doubled text. Admin and affected shared-source analysis, formatting, boundary
+checks and sanctioned Development APK build passed. Signing/package/version were
+verified before a successful in-place update on vk55gmzh6tgabqey. The original
+phone capture is /tmp/sarisupply-current-screen.png. The updated capture was black
+while Android reported mWakefulness=Dozing; final device visual review is pending
+reopening the same sheet. Full harness/emulator suites are deferred
+under presentation build mode.
+
+### Warehouse Orders item workflow — 2026-10-07
+
+Reviewed the connected phone’s Orders screen. Warehouse order details now group
+items with line totals, display stage-specific fulfillment guidance and a single
+primary action, separate QR verification from fulfillment, and retain proposed
+items for store approval. Packing/proposal field labels identify each item and
+unit. The queue reference uses one line; the full ID remains in details. Store
+Owner ordering, trusted command payloads, stock reservation and payment ledger
+rules are unchanged. Device flow acceptance remains manual; full harness deferred
+in presentation build mode.
+
+Verification: Admin analysis and affected shared Dart analysis pass with zero
+issues; 13 focused Orders checks pass, including 320px / 200% text, lifecycle
+actions and disabled cached orders. Architecture boundaries and dev debug APK
+build pass. Installed in place after package/signing/version checks. A phone
+screenshot confirms expanded Next step and item rows. Device review caught an
+assertion in the nested selectable order-reference control; replaced it with
+plain full-reference text and rebuilt/reinstalled. End-to-end order mutations
+remain for manual verification. Repository-wide diff whitespace check reports
+an existing unrelated trailing blank line in firebase/functions/deno.json.
+
+### Warehouse Orders modal refinement — 2026-10-07
+
+Following phone review, the warehouse order queue now keeps only store, total,
+status, item count and time. Tapping a row opens a 92%-height modal with item
+line totals, a short stage cue, pinned primary fulfillment action, and collapsed
+delivery/payment details. Secondary order actions are under More. This removes
+long inline copy from the scrolling Orders page. The Admin dev APK was built and
+updated in place; order mutations remain server authorized. The updated modal
+was opened and captured on the connected phone.
+
+### Store Owner wholesale payment choice — 2026-10-07
+
+Store Owner order review now requires an explicit Cash on delivery or QR choice.
+QR is disabled until the supplier configures payment instructions; the order
+stores a snapshot and stays pending until the supplier manually confirms actual
+payment. The chosen method appears in order history and Admin details. Dispatch
+carries the method and due amount to Driver; QR stops clearly say to collect no
+cash, and the trusted proof operation rejects cash for QR orders. Older orders
+without a method retain COD behavior. No payment gateway or automatic transfer
+was added.
+
+Formatting, Admin/POS/Driver analysis, shared company/model package analysis,
+architecture checks and the Firebase Functions TypeScript build passed.
+Automated test suites and manual order/payment acceptance were not run, so the
+Development backend was not deployed. `FREE_BACKEND.md` identifies Deno Deploy
+as the current HTTP runtime and makes publishing a separate operator action
+after code/configuration review; Firebase Functions remain for emulator callables.
+The changed trusted operation source is ready for that review. The deployed
+Development API remains on its prior revision, so the new QR selection is not
+live until a future Development deployment.
+
+
+### POS Branches, Team and Devices UI — 2026-10-07
+
+Reviewed the connected phone's Branches screen and the shared management layouts.
+Added page headings, store context, primary/secondary action hierarchy, wrapping
+Team tabs, search over loaded records, explicit status badges and branch access
+counts. Pending invitations say Awaiting acceptance. Device IDs and activation/
+revocation guidance remain visible. Forms explain branch scope and temporary PINs.
+Inactive branches no longer expose an empty menu; destructive actions retain
+confirmation and use distinct icon/color cues. Switching stores retains the
+Branches or Devices list kind. No management command or server permission changed.
+
+Verification: POS analysis passes with zero issues; nine focused management
+checks pass, including denial, PIN privacy/confirmation, retry operation IDs,
+search and store switching. Two temporary phone preview checks passed at
+390px/100% and 320px/200%, covering all three pages and all Team tabs. Captured
+fixture previews for visual review. Formatting, architecture boundaries and
+scoped diff whitespace checks pass. Full harness/emulator matrices remain
+deferred in presentation build mode. Development debug APK built through
+tool/build_client.sh with the required public client settings, then installed
+in place after package, signing and version checks. Original first-install time
+is retained. After restart the signed-in store workspace loaded the supplier
+catalog and saved device stock on the phone. Final native review of the three
+management pages and manual mutation acceptance are pending; remote taps are
+blocked by the phone.
+
+
+### Store supplier order UI — 2026-10-07
+
+Captured the connected phone's Company Orders list and New order catalog.
+The list now prioritizes New order, with secondary sourcing requests, local
+search and All / In progress / Completed filters. Each card identifies the order
+by a short reference, status, total, branch, product count and date; full IDs
+remain in expanded Delivery & payment. Revised orders show proposed line totals
+and their total before approval. Receipt/cancellation retain existing policies.
+
+The catalog gives identity/price more room above wrapping quantity controls,
+explicit Add to order, selling units and line totals. A single warehouse is
+compact context. Search has a clear action and catalog freshness is secondary.
+Suggested reorder shows device stock, mapped selling quantities, Change match,
+and already-added state. Review keeps one scroll area, quantity edits, delivery
+and payment choice, with pinned total/Submit and Close review. Validation brings
+the relevant details or payment control into view.
+
+Verification: shared company, POS and Admin analysis pass with zero issues.
+Six focused controller checks and three review-flow checks pass, including
+serialized draft writes, catalog reuse, access invalidation, acknowledged cart
+clearing, 390px/100% and 320px/200% text. Architecture boundaries pass.
+Development APK built with the required public settings and installed in place
+after package/signing/non-decreasing version checks. The final correction APK
+was rebuilt and reinstalled successfully; native screen acceptance is pending. Full harness/emulator suites are
+deferred in presentation mode. No backend or payment deployment was performed;
+the prior documented live-backend limitation for explicit QR choice remains.
+
+### Admin owner and warehouse UI refinement — 2026-10-07
+
+Reviewed the connected phone's Admin Orders and Stock screens and the Company
+administration source. Orders had a dead-end empty queue while other queues held
+work; horizontal filters concealed later choices. Dense administration rows
+compressed identities, scopes and actions, and the Company route lacked a visible
+return to operations.
+
+Orders, Stock and Deliveries now show wrapping counted queue/filter choices.
+Empty order results offer the next populated queue or Clear search and filters.
+Company administration has a visible back action, company identity, refresh and
+wrapping Locations/Team/Applications controls. Warehouse/member cards retain full
+identity and access/address details with actions below. Team puts members first,
+adds email/warehouse search and visible role choices, resolves warehouse IDs to
+names, and shows invitation expiry when available. Existing Company authorization,
+mutation, confirmation and form methods match their pre-change source exactly.
+
+Verification: Admin Flutter analysis and shared company Dart analysis report zero
+issues; architecture boundaries pass. Six focused form/stock checks pass, including
+Company Owner roster layout at 320px with 200% text and warehouse-name search.
+The sanctioned Admin dev debug APK builds and updates the connected Redmi in place.
+Package and signing SHA-256 match; version code remains 1. Android first-install
+time remains 2026-09-28 21:51:55. Native captures show the updated Stock and
+Deliveries controls and retained company data; company access loads. Native Team,
+Locations and order shortcut flow acceptance remain for user manual testing.
+Full harness/emulator/UI matrices remain deferred under presentation build mode.
+
+### Admin navigation correction after user review — 2026-10-07
+
+User rejected the first wrapping chip treatment as visually worse and reported
+poor navigation. The corrected design restores compact underlined secondary queue
+tabs for Orders, Stock and Deliveries, with counts below labels and all choices
+sharing one row at normal text size. Enlarged text uses horizontal scrolling.
+Item requests is a distinct text action rather than a queue choice. Company
+Locations/Team/Applications use the same secondary tab treatment.
+
+Operations and Company administration now share one CompanyNavigationBar with
+Orders, Stock, Deliveries and More. Administration selects More and returns the
+chosen operations destination directly; system back retains the previously
+selected page. Admin routes return a typed destination while the shared screen's
+existing onMore callback remains compatible with other callers. Workspace switch
+and sign-out behavior retain their prior authorization handling.
+
+Seven focused form/stock/navigation checks pass, including More retaining all
+four destinations and returning directly to Stock, and roster search text
+surviving scrolling at 320px with 200% text. Admin and shared company analysis
+report zero issues; architecture boundaries pass. The sanctioned dev debug APK
+builds with matching package, version and signing certificate for the in-place
+phone update. Native navigation acceptance remains for user manual review;
+full harness/emulator matrices stay deferred under presentation build mode.
+
+The correction APK installation was attempted but Android rejected it with
+`INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`. The phone still runs
+the earlier chip-layout build; the navigation correction is implemented, analyzed,
+focused-tested and built but is **not installed**. Retry awaits the user's response
+and acceptance of Android's installation prompt. No uninstall, data reset,
+downgrade or permission bypass was attempted.
+
+The user explicitly authorized retrying the corrected update. The subsequent
+in-place `adb install -r` succeeded; the correction APK is now installed. The
+Admin package remains `com.sarisupply.sarisupply_admin`, version code 1, and
+Android's original first-install time is preserved. Native visual review of More
+and its destination switching remains separate from the passing route test.
+
+Native capture after the successful correction install confirms the compact Stock
+filter strip, then Orders with all four counted queues visible on one row, separate
+Item requests, the populated-queue shortcut and retained company order counts.
+
+### Admin task hierarchy after phone critique — 2026-10-07
+
+Orders, Stock and Deliveries now use compact task headings with an explicit
+Warehouse scope label. Order rows include a short reference and date/time, keep
+store identity prominent, and use a quieter total. Ready contains packed orders;
+On route contains dispatched/in-transit orders; receipt completion is shown as
+Received without changing payment facts. Receipt review remains visible.
+
+Deliveries use Drafts / On route / History. Rider assignment does not move a
+draft into On route. Rows lead with destinations and the full saved rider name
+or email, with reference/time below. Dispatch delivery is the filled primary
+action; Cancel draft is in the delivery menu with the existing reason form.
+Contact/address expands separately from stop items. Backend transitions, role
+checks, scoped drafts, stable operation IDs and local data remain unchanged.
+
+The persistent fourth destination is now Company, with Warehouses / Team /
+Applications inside. Item requests is under Orders → Order actions. All four
+main destinations stay present inside Company administration and return directly
+to operations.
+
+Verification: 23 focused queue/layout, form, stock header and navigation checks
+pass. Admin analysis has no issues and the architecture boundary check passes.
+Shared package analysis also has no issues. The Admin development debug APK
+build succeeds using the configured development backend. Package/version and
+signing certificate checks match the installed Admin app. The in-place update
+succeeded on Redmi vk55gmzh6tgabqey at 14:42:28, preserving versionCode 1 and
+the original 2026-09-28 first-install timestamp. The activity starts and
+warehouse orders refresh successfully without requiring sign-in again.
+Full harnesses and end-to-end flow testing remain deferred to user manual testing.
+
+Phone review shows the Warehouse header, all four bottom destinations and the
+On route queue with 10 order records, short references and full dates. Refresh
+completed with no offline banner. User then requested centered empty queues:
+the icon, message and next-queue action now center within the remaining viewport.
+A focused geometry check passes. The native capture also led to a tighter normal
+phone footer; large text and long totals retain the readable stacked layout.
+The final adjusted in-place APK update succeeded at 14:48:13 with the original
+first-install timestamp intact. Native capture confirms the compact footer and
+fresh warehouse access: 2 Awaiting, 8 On route and 2 Received records loaded.
+The empty state is covered by the geometry check; its final native capture is
+not available because the phone is showing populated Awaiting orders.
+Expanded Deliveries and Company page native acceptance remain manual checks.

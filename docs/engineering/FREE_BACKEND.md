@@ -10,7 +10,17 @@ On 2026-10-06 the operator supplied Development Firebase and Deno credentials.
 Credentials are privately stored outside the repository. Deno organization
 `aracena18` was verified on the Free plan. The Development application
 `aracena18-sarisupply-dev-api` is deployed at
-`https://aracena18-sarisupply-dev-api.aracena18.deno.net`, revision `42wrrxfpnyd4`;
+`https://aracena18-sarisupply-dev-api.aracena18.deno.net`; the current routed
+revision observed on 2026-10-06 is `wz78ghppq0ty`, containing the additive
+authorization workspace commands. Prebuilt REST deployment succeeded; explicit
+promotion returned HTTP 204 and moved the stable Development URL off the older
+revision. GET on `getAuthorizationWorkspaces` now returns HTTP 405 (`POST required`),
+and unauthenticated POST returns HTTP 401 (`Authentication required`). These are
+public routing/Auth-gate checks; authenticated workspace access remains pending.
+An earlier revision failed startup with `Missing Cloudinary server settings`.
+Development `CLOUDINARY_UPLOADS_ENABLED` was restored to `false`; photo uploads
+remain disabled until valid provider configuration is verified. No business data,
+PIN pepper, or identity credentials were changed by this deployment repair.
 The Firebase App Check API responds successfully, and the operator-selected
 Admin account has its Development role and custom claim. Runtime secrets are
 restricted to runtime production/preview contexts within the Development app,
@@ -23,8 +33,9 @@ verification, the operator explicitly instructed local Phase 2 implementation.
 That exception permits local identity/UX work; account, live SDK and capacity
 evidence remain pending and no pilot or hosted-feasibility claim is authorized.
 
-No business-service logic or PIN derivation is replaced. The 21 command names
-and output shapes are preserved. `firebase-functions` is retained for existing
+No business-service logic or PIN derivation is replaced. The original 21 command
+names and output shapes are preserved alongside additive workspace commands.
+`firebase-functions` is retained for existing
 emulator callables and the typed error contract; it does not require deploying
 Functions or accessing Secret Manager. Production factories select HTTPS with
 explicit configuration. There is no paid callable fallback.
@@ -198,3 +209,12 @@ Primary references checked 2026-10-04:
 [Deno pricing](https://deno.com/deploy/pricing),
 [Firestore quotas](https://firebase.google.com/docs/firestore/quotas),
 [custom-backend App Check](https://firebase.google.com/docs/app-check/custom-resource-backend).
+
+
+2026-10-06 company operations: Development revision `pwqma683s9v5` is promoted
+at the existing Development URL. Adds `discoverSupplyingCompany`,
+`readCompanyOperations` and `mutateCompanyOperations` through `/v1/commands/`.
+Uses the existing Firebase project and Deno runtime configuration, with no secret
+values in deployment assets and no live data migration. Cloudinary uploads remain
+disabled. Business-flow/manual and representative free-capacity gates remain pending;
+see [CURRENT_STATE.md](CURRENT_STATE.md#company-ordering-and-dispatch--2026-10-06).

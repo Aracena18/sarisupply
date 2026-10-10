@@ -12,8 +12,10 @@ import '../features/device_setup/presentation/device_setup_screen.dart';
 import '../features/owner_onboarding/presentation/owner_onboarding_gate.dart';
 import '../features/management/presentation/management_screen.dart';
 import '../features/catalog/catalog_branch_screen.dart';
+import '../features/catalog/catalog_screen.dart';
 import '../features/checkout/checkout_screen.dart';
 import '../features/catalog/inventory_database.dart';
+import '../features/reports/presentation/reports_screen.dart';
 
 enum PosGateState {
   signedOut,
@@ -192,14 +194,26 @@ class _PosAppGateState extends State<PosAppGate> {
     try {
       if (deviceSession) await widget.workflow.signIn();
       final memberships = await widget.workflow.memberships.listMyMemberships();
+      var applicationPending = false;
+      if (memberships.isEmpty) {
+        final applications =
+            await widget.workflow.applications.watchMyApplications().first;
+        applications.sort((a, b) =>
+            (a.submittedAt ?? DateTime.fromMillisecondsSinceEpoch(0)).compareTo(
+                b.submittedAt ?? DateTime.fromMillisecondsSinceEpoch(0)));
+        applicationPending = applications.isNotEmpty &&
+            applications.last.status == MerchantApplicationStatus.pendingReview;
+      }
       if (!mounted) return;
       await Navigator.of(context).push(MaterialPageRoute<void>(
           builder: (_) => ManagementScreen(
                 memberships: memberships,
+                applicationPending: applicationPending,
                 management: widget.workflow.management,
                 membershipRepository: widget.workflow.memberships,
                 cashiers: widget.workflow.cashiers,
                 devices: widget.workflow.devices,
+                onOpenBranch: _openManagedBranch,
                 onCatalog: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                         builder: (_) => CatalogBranchScreen(
@@ -220,6 +234,41 @@ class _PosAppGateState extends State<PosAppGate> {
       if (mounted) setState(() => _loading = false);
     }
     if (mounted && _error == null) await _reload();
+  }
+
+  Future<void> _openManagedBranch(
+    MerchantMembership membership,
+    Branch branch, {
+    required bool openReports,
+  }) async {
+    final store = await openInventory(membership.merchantId, branch.id);
+    if (!mounted) {
+      await store.close();
+      return;
+    }
+    try {
+      await Navigator.of(context).push(MaterialPageRoute<void>(
+        builder: (_) => openReports
+            ? ReportsScreen(
+                store: store,
+                branchName: branch.name,
+                isOwner: membership.role == MerchantRole.owner,
+              )
+            : CatalogScreen(
+                branchName: branch.name,
+                openStore: () =>
+                    openInventory(membership.merchantId, branch.id),
+                gateway: widget.workflow.humanInventory,
+                canUpload: true,
+                canEdit: membership.role == MerchantRole.owner,
+                authorizationRevision: '${membership.role.name}:'
+                    '${membership.updatedAt.microsecondsSinceEpoch}:'
+                    '${membership.allBranches}:${membership.branchIds.join(',')}',
+              ),
+      ));
+    } finally {
+      await store.close();
+    }
   }
 
   void _dismissCheckoutRoutes() {

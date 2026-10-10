@@ -5,7 +5,7 @@ import { requireDocumentId } from './ids';
 
 export interface AuditEventInput {
   merchantId: string;
-  actorType: 'human' | 'device' | 'cashier' | 'platformAdmin';
+  actorType: 'human' | 'device' | 'cashier' | 'platformAdmin' | 'companyOwner';
   actorId: string;
   action: string;
   targetType: string;

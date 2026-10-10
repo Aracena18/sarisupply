@@ -94,13 +94,7 @@ final class MerchantApplicationFunctions
   static MerchantApplication _applicationFromDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> snapshot,
   ) {
-    final data = Map<String, Object?>.from(snapshot.data());
-    data['id'] = snapshot.id;
-    for (final field in ['submittedAt', 'reviewedAt']) {
-      final value = data[field];
-      if (value is Timestamp) data[field] = value.toDate();
-    }
-    return MerchantApplication.fromMap(data);
+    return _applicationFromMap({...snapshot.data(), 'id': snapshot.id});
   }
 
   @override
@@ -153,4 +147,83 @@ final class MerchantApplicationFunctions
       branchId: result['branchId'] as String?,
     );
   }
+}
+
+final class CompanyMerchantApplicationFunctions
+    implements AdminReviewRepository {
+  CompanyMerchantApplicationFunctions({
+    required this.companyId,
+    required MerchantCallableGateway gateway,
+  }) : _gateway = gateway;
+
+  factory CompanyMerchantApplicationFunctions.forCompany(String companyId) {
+    final app = Firebase.app();
+    return CompanyMerchantApplicationFunctions(
+      companyId: companyId,
+      gateway: HttpsMerchantGateway.forApp(app),
+    );
+  }
+
+  final String companyId;
+  final MerchantCallableGateway _gateway;
+
+  @override
+  Stream<List<MerchantApplication>> watchPending() =>
+      Stream.fromFuture(_loadPending());
+
+  Future<List<MerchantApplication>> _loadPending() async {
+    final result = await _gateway.call('listPendingMerchantApplications', {
+      'companyId': companyId,
+    });
+    final rawApplications = result['applications'];
+    if (rawApplications is! List) {
+      throw StateError('Application list returned an invalid response');
+    }
+    return rawApplications.map((item) {
+      if (item is! Map) {
+        throw StateError('Application list contains an invalid record');
+      }
+      return _applicationFromMap(item);
+    }).toList(growable: false);
+  }
+
+  @override
+  Future<MerchantReviewResult> review({
+    required String applicationId,
+    required String decision,
+    required String operationId,
+    String? reviewNotes,
+  }) async {
+    final result = await _gateway.call('reviewMerchantApplication', {
+      'applicationId': applicationId,
+      'companyId': companyId,
+      'decision': decision,
+      'operationId': operationId,
+      if (reviewNotes != null) 'reviewNotes': reviewNotes,
+    });
+    final resultId = result['applicationId'];
+    final status = result['status'];
+    if (resultId is! String || status is! String) {
+      throw StateError('Review returned an invalid response');
+    }
+    return MerchantReviewResult(
+      applicationId: resultId,
+      status: status,
+      merchantId: result['merchantId'] as String?,
+      branchId: result['branchId'] as String?,
+    );
+  }
+}
+
+MerchantApplication _applicationFromMap(Map<Object?, Object?> source) {
+  final data = Map<String, Object?>.from(source);
+  for (final field in ['submittedAt', 'reviewedAt']) {
+    final value = data[field];
+    if (value is Timestamp) {
+      data[field] = value.toDate();
+    } else if (value is String) {
+      data[field] = DateTime.tryParse(value);
+    }
+  }
+  return MerchantApplication.fromMap(data);
 }

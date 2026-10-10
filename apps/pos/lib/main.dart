@@ -52,7 +52,7 @@ class SariSupplyPosApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: AppIdentity.posName,
-      theme: SariSupplyTheme.light(),
+      theme: SariSupplyTheme.light,
       home: home,
     );
   }

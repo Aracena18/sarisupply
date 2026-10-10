@@ -20,3 +20,7 @@ export 'src/functions/delivery_functions.dart';
 export 'src/functions/customer_functions.dart';
 
 export 'src/functions/operations_functions.dart';
+export 'src/functions/authorization_workspace_functions.dart';
+
+export 'src/functions/driver_location_gateway.dart';
+export 'src/functions/company_operations_functions.dart';

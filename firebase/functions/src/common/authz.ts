@@ -12,6 +12,17 @@ export interface AuthRequest {
 export type DocumentData = Record<string, unknown>;
 export type ReadDocument = (path: string) => Promise<DocumentData | null>;
 
+export const companyRoles = ['companyOwner', 'warehouseOperations', 'rider'] as const;
+export type CompanyRole = typeof companyRoles[number];
+export interface CompanyRoleGrant extends DocumentData {
+  companyId: string;
+  userId: string;
+  role: CompanyRole;
+  status: 'active';
+  revision: number;
+  scope: { kind: 'company' } | { kind: 'warehouses'; warehouseIds: string[] };
+}
+
 export interface MembershipRecord extends DocumentData {
   userId: string;
   merchantId: string;
@@ -41,6 +52,50 @@ export function requireHuman(request: AuthRequest): string {
 export class AuthorizationService {
   constructor(private readonly readDocument: ReadDocument) {}
 
+  async requireCompanyRole(
+    request: AuthRequest, companyId: string, role: CompanyRole, warehouseId?: string,
+  ): Promise<{ grant: CompanyRoleGrant; membershipRevision: number }> {
+    const uid = requireHuman(request);
+    const token = request.auth?.token;
+    const firebase = token?.firebase as Record<string, unknown> | undefined;
+    if (token?.email_verified !== true || typeof token.email !== 'string' ||
+        !token.email.trim() || firebase?.sign_in_provider !== 'google.com') throw denied();
+    requireDocumentId(companyId, 'company ID');
+    if (!companyRoles.includes(role)) throw denied();
+    const root = `companies/${companyId}`;
+    const company = await this.readDocument(root);
+    const member = await this.readDocument(`${root}/memberships/${uid}`);
+    const grant = await this.readDocument(`${root}/memberships/${uid}/roles/${role}`);
+    const revision = (value: unknown): value is number =>
+      typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+    if (company?.companyId !== companyId || company.status !== 'active' ||
+        company.authorizationVersion !== 1 || member?.companyId !== companyId ||
+        member.userId !== uid || member.status !== 'active' || !revision(member.revision) ||
+        grant?.companyId !== companyId || grant.userId !== uid || grant.role !== role ||
+        grant.status !== 'active' || !revision(grant.revision)) throw denied();
+    const scope = grant.scope as Record<string, unknown> | undefined;
+    let warehousesToCheck: string[] = [];
+    if (role === 'companyOwner') {
+      if (scope?.kind !== 'company' || Object.hasOwn(scope, 'warehouseIds')) throw denied();
+    } else {
+      const ids = scope?.warehouseIds;
+      if (scope?.kind !== 'warehouses' || !Array.isArray(ids) || !ids.length ||
+          ids.length > 100 || new Set(ids).size !== ids.length ||
+          !ids.every(value => typeof value === 'string' && value.length > 0 &&
+            value.length <= 128 && !value.includes('/') && value !== '.' && value !== '..')) throw denied();
+      if (warehouseId !== undefined && !ids.includes(warehouseId)) throw denied();
+      warehousesToCheck = warehouseId === undefined ? ids as string[] : [warehouseId];
+    }
+    if (role === 'companyOwner' && warehouseId !== undefined) warehousesToCheck = [warehouseId];
+    for (const selectedId of warehousesToCheck) {
+      requireDocumentId(selectedId, 'warehouse ID');
+      const warehouse = await this.readDocument(`${root}/warehouses/${selectedId}`);
+      if (warehouse?.companyId !== companyId || warehouse.warehouseId !== selectedId ||
+          warehouse.status !== 'active') throw denied();
+    }
+    return { grant: grant as CompanyRoleGrant, membershipRevision: member.revision };
+  }
+
   async requirePlatformAdmin(request: AuthRequest): Promise<string> {
     const uid = requireHuman(request);
     if (request.auth?.token.sarisupplyAdmin !== true) throw denied();
@@ -67,6 +122,7 @@ export class AuthorizationService {
         membership.merchantId !== merchantId ||
         membership.status !== 'active' ||
         (membership.role !== 'owner' && membership.role !== 'manager') ||
+        (membership.role === 'owner' && membership.allBranches !== true) ||
         typeof membership.allBranches !== 'boolean' ||
         !Array.isArray(membership.branchIds) ||
         !membership.branchIds.every((id) => typeof id === 'string')) {

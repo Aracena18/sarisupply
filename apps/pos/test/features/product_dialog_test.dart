@@ -49,10 +49,13 @@ void main() {
     await tester.ensureVisible(fields.at(4));
     await tester.enterText(fields.at(4), '00123');
     await tester.tap(find.text('Save product'));
-    await tester.pumpAndSettle();
+    // Disk-backed thumbnails can keep a loading animation alive in fake async.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
     expect(find.textContaining('internal secret'), findsNothing);
     await tester.tap(find.text('Save product'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
     expect(attempts, hasLength(2));
     expect(ids[0], ids[1]);
     expect(attempts[0].id, attempts[1].id);

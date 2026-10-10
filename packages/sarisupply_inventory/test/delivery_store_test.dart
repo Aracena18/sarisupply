@@ -48,6 +48,49 @@ void main() {
     }
   });
 
+  test('Assigned product snapshots load without the retail catalog', () async {
+    final run = DeliveryRun(
+      id: 'assigned-run',
+      driverId: 'rider',
+      driverName: 'Rider',
+      vehicleInfo: 'Van',
+      warehouseId: 'warehouse',
+      status: DeliveryRunStatus.dispatched,
+      createdAt: DateTime.now(),
+      stops: [
+        DeliveryStop(
+          id: 'assigned-stop',
+          deliveryRunId: 'assigned-run',
+          sequence: 1,
+          destinationId: 'store',
+          destinationName: 'Store',
+          destinationAddress: 'Address',
+          items: const [
+            DeliveryStopItem(
+              productId: 'uncached-product',
+              productName: 'Assigned product',
+              sku: 'assigned-sku',
+              quantityOrdered: 2,
+              quantityDelivered: 0,
+              quantityReturned: 0,
+              unitCostCentavos: 100,
+            )
+          ],
+        )
+      ],
+    );
+    await store.saveDeliveryRun(run);
+    expect(
+        (await store.getDeliveryRun(run.id))!
+            .stops
+            .single
+            .items
+            .single
+            .productId,
+        'uncached-product');
+    expect(await store.db.rawQuery('PRAGMA foreign_key_check'), isEmpty);
+  });
+
   test('Delivery run lifecycle, stop status, and doorstep proof with returns',
       () async {
     final now = DateTime.now();
@@ -148,5 +191,33 @@ void main() {
     expect(finishedStop.items.first.returnReason, 'Dented cans');
     expect(updated.status, DeliveryRunStatus.completed);
     expect(updated.completedAt, isNotNull);
+
+    // Recreate the legacy v10 constraint to exercise the upgrade with existing
+    // delivery facts and pending operations, rather than an empty database.
+    final pending = await store.pendingDeliveries();
+    final itemRows = await store.db.query('delivery_stop_items');
+    await store.db.execute('''CREATE TABLE legacy_items (
+      id TEXT PRIMARY KEY, stop_id TEXT NOT NULL REFERENCES delivery_stops(id),
+      product_id TEXT NOT NULL REFERENCES products(id), quantity_ordered INTEGER NOT NULL,
+      quantity_delivered INTEGER NOT NULL, quantity_returned INTEGER NOT NULL, return_reason TEXT)''');
+    await store.db
+        .execute('INSERT INTO legacy_items SELECT * FROM delivery_stop_items');
+    await store.db.execute('DROP TABLE delivery_stop_items');
+    await store.db
+        .execute('ALTER TABLE legacy_items RENAME TO delivery_stop_items');
+    await store.db.execute('PRAGMA user_version = 10');
+    await store.close();
+    store = await InventoryStore.open(databaseFactoryFfi, '${dir.path}/db',
+        merchantId: 'm1', branchId: 'b1');
+    expect(await store.db.query('delivery_stop_items'), itemRows);
+    expect(await store.pendingDeliveries(), pending);
+    expect(
+        (await store.getDeliveryRun('run-001'))!
+            .stops
+            .single
+            .proof!
+            .cashCollectedCentavos,
+        36000);
+    expect(await store.db.rawQuery('PRAGMA foreign_key_check'), isEmpty);
   });
 }

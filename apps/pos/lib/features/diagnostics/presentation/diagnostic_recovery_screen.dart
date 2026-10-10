@@ -245,21 +245,21 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
     final report = _sysReport!;
     final (bg, border, text, icon) = switch (report.overallLevel) {
       HealthLevel.healthy => (
-          Colors.green.shade50,
-          Colors.green.shade300,
-          Colors.green.shade900,
+          SariSupplyColors.success.withValues(alpha: 0.1),
+          SariSupplyColors.success.withValues(alpha: 0.5),
+          SariSupplyColors.success,
           Icons.check_circle,
         ),
       HealthLevel.warning => (
-          Colors.amber.shade50,
-          Colors.amber.shade400,
-          Colors.amber.shade900,
+          SariSupplyColors.warning.withValues(alpha: 0.1),
+          SariSupplyColors.warning,
+          SariSupplyColors.warning,
           Icons.warning,
         ),
       HealthLevel.critical => (
-          Colors.red.shade50,
-          Colors.red.shade300,
-          Colors.red.shade900,
+          SariSupplyColors.error.withValues(alpha: 0.1),
+          SariSupplyColors.error.withValues(alpha: 0.5),
+          SariSupplyColors.error,
           Icons.error,
         ),
     };
@@ -268,7 +268,7 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(SariSupplyRadii.md),
         border: Border.all(color: border),
       ),
       child: Row(
@@ -305,8 +305,8 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(SariSupplyRadii.md),
+        side: BorderSide(color: SariSupplyColors.divider),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -318,8 +318,8 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
                 Icon(
                   db.isHealthy ? Icons.storage : Icons.storage_outlined,
                   color: db.isHealthy
-                      ? Colors.green.shade700
-                      : Colors.red.shade700,
+                      ? SariSupplyColors.success
+                      : SariSupplyColors.error,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -334,9 +334,9 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: db.isHealthy
-                        ? Colors.green.shade100
-                        : Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(8),
+                        ? SariSupplyColors.success.withValues(alpha: 0.1)
+                        : SariSupplyColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(SariSupplyRadii.sm),
                   ),
                   child: Text(
                     db.isHealthy ? 'INTEGRITY OK' : 'CHECK FAILED',
@@ -344,8 +344,8 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: db.isHealthy
-                          ? Colors.green.shade900
-                          : Colors.red.shade900,
+                          ? SariSupplyColors.success
+                          : SariSupplyColors.error,
                     ),
                   ),
                 ),
@@ -370,8 +370,8 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(SariSupplyRadii.md),
+        side: BorderSide(color: SariSupplyColors.divider),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -400,7 +400,8 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
                                   const TextStyle(fontWeight: FontWeight.w600)),
                           Text(m.detail,
                               style: TextStyle(
-                                  fontSize: 11, color: Colors.grey.shade600)),
+                                  fontSize: 11,
+                                  color: SariSupplyColors.ink600)),
                         ],
                       ),
                     ),
@@ -409,7 +410,7 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: _levelColor(m.level).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(SariSupplyRadii.sm),
                       ),
                       child: Text(
                         m.value,
@@ -433,9 +434,9 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
 
   Color _levelColor(HealthLevel level) {
     return switch (level) {
-      HealthLevel.healthy => Colors.green.shade800,
-      HealthLevel.warning => Colors.amber.shade900,
-      HealthLevel.critical => Colors.red.shade800,
+      HealthLevel.healthy => SariSupplyColors.success,
+      HealthLevel.warning => SariSupplyColors.warning,
+      HealthLevel.critical => SariSupplyColors.error,
     };
   }
 
@@ -443,10 +444,10 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.indigo.shade200),
+        borderRadius: BorderRadius.circular(SariSupplyRadii.md),
+        side: BorderSide(color: SariSupplyColors.info),
       ),
-      color: Colors.indigo.shade50.withValues(alpha: 0.3),
+      color: SariSupplyColors.info.withValues(alpha: 0.3),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -455,13 +456,13 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
             Row(
               children: [
                 const Icon(Icons.settings_backup_restore,
-                    color: Colors.indigo, size: 24),
+                    color: SariSupplyColors.info, size: 24),
                 const SizedBox(width: 8),
                 Text(
                   'Encrypted Recovery Copy',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Colors.indigo.shade900,
+                        color: SariSupplyColors.info,
                       ),
                 ),
               ],
@@ -469,7 +470,7 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
             const SizedBox(height: 6),
             Text(
               'Restore a complete encrypted backup into a separate recovery workspace for the same store and branch. Inspect its records without replacing working data.',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              style: TextStyle(fontSize: 12, color: SariSupplyColors.ink600),
             ),
             const Divider(height: 20),
             Row(
@@ -480,7 +481,7 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
-                        color: Colors.grey.shade800),
+                        color: SariSupplyColors.ink800),
                   ),
                 ),
                 TextButton.icon(
@@ -546,7 +547,7 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
                       icon: const Icon(Icons.download),
                       label: Text(_restoring ? 'Restoring…' : 'Restore copy'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: Colors.red.shade700,
+                        backgroundColor: SariSupplyColors.error,
                       ),
                       onPressed: (_restoring || _verifying)
                           ? null
@@ -585,13 +586,13 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: _verifyResult!.startsWith('VALID')
-                      ? Colors.green.shade50
-                      : Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(8),
+                      ? SariSupplyColors.success.withValues(alpha: 0.1)
+                      : SariSupplyColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(SariSupplyRadii.sm),
                   border: Border.all(
                     color: _verifyResult!.startsWith('VALID')
-                        ? Colors.green.shade300
-                        : Colors.red.shade300,
+                        ? SariSupplyColors.success.withValues(alpha: 0.5)
+                        : SariSupplyColors.error.withValues(alpha: 0.5),
                   ),
                 ),
                 child: Text(
@@ -600,8 +601,8 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
                     fontSize: 12,
                     fontFamily: 'monospace',
                     color: _verifyResult!.startsWith('VALID')
-                        ? Colors.green.shade900
-                        : Colors.red.shade900,
+                        ? SariSupplyColors.success
+                        : SariSupplyColors.error,
                   ),
                 ),
               ),
@@ -619,7 +620,7 @@ class _DiagnosticRecoveryScreenState extends State<DiagnosticRecoveryScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label,
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+              style: TextStyle(fontSize: 13, color: SariSupplyColors.ink600)),
           Text(value,
               style:
                   const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),

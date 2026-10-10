@@ -30,10 +30,14 @@ const user =
 class Reviews extends Fake implements AdminReviewRepository {
   Reviews({this.empty = false, this.fail = false});
   final bool empty, fail;
+  int watches = 0;
   @override
-  Stream<List<MerchantApplication>> watchPending() => fail
-      ? Stream.error(StateError('private detail'))
-      : Stream.value(empty ? [] : [application]);
+  Stream<List<MerchantApplication>> watchPending() {
+    watches++;
+    return fail
+        ? Stream.error(StateError('private detail'))
+        : Stream.value(empty ? [] : [application]);
+  }
 }
 
 class Auth extends Fake implements AuthRepository {
@@ -64,7 +68,7 @@ class Access extends Fake implements AdminAccessRepository {
 
 Widget app(Widget screen, double scale) => MaterialApp(
     debugShowCheckedModeBanner: false,
-    theme: SariSupplyTheme.light(),
+    theme: SariSupplyTheme.light,
     builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context)
             .copyWith(textScaler: TextScaler.linear(scale)),
@@ -72,12 +76,14 @@ Widget app(Widget screen, double scale) => MaterialApp(
     home: screen);
 void main() {
   setUpAll(() async {
-    final loader = FontLoader('packages/sarisupply_design_system/NunitoSans');
-    for (final w in [400, 600, 700]) {
-      loader.addFont(rootBundle.load(
-          'packages/sarisupply_design_system/assets/fonts/NunitoSans-$w.ttf'));
-    }
+    final loader = FontLoader(SariSupplyTypography.fontFamily)
+      ..addFont(rootBundle.load(
+          'packages/sarisupply_design_system/assets/fonts/InstrumentSans.ttf'));
     await loader.load();
+    final fallback = FontLoader(SariSupplyTypography.fallback.first)
+      ..addFont(rootBundle
+          .load('packages/sarisupply_design_system/assets/fonts/Inter.ttf'));
+    await fallback.load();
     final icons = FontLoader('MaterialIcons')
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
     await icons.load();
@@ -141,6 +147,27 @@ void main() {
     expect(auth.calls, 1);
     auth.signIn.complete(user);
     await tester.pumpAndSettle();
+  });
+  testWidgets(
+      'Platform Admin exposes onboarding without private business navigation',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final reviews = Reviews();
+    await tester.pumpWidget(app(
+        MerchantReviewListScreen(reviews: reviews, onSignOut: () async {}), 2));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'no matching business');
+    await tester.pumpAndSettle();
+    expect(find.text('No matching applications'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
+    expect(find.text('Purchasing'), findsNothing);
+    expect(find.text('Reports'), findsNothing);
+    expect(find.text('No matching applications'), findsOneWidget);
+    expect(reviews.watches, 1);
+    expect(tester.takeException(), isNull);
   });
   testWidgets('review representative golden', (tester) async {
     tester.view.physicalSize = const Size(390, 844);

@@ -7,6 +7,8 @@ environment:
   sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
+  sarisupply_company:
+    path: ../../packages/sarisupply_company
   flutter:
     sdk: flutter
   firebase_core: ^4.15.0
@@ -14,6 +16,7 @@ dependencies:
   uuid: ^4.6.0
   sqflite: ^2.4.4
   url_launcher: ^6.3.0
+  geolocator_android: ^5.1.1
   sarisupply_auth:
     path: ../../packages/sarisupply_auth
   sarisupply_core:

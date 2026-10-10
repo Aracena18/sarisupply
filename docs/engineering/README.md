@@ -4,16 +4,24 @@ This directory coordinates how SariSupply is built, reviewed, and verified. It d
 
 ## Source-of-truth model
 
-SariSupply separates three kinds of engineering information:
+SariSupply separates four kinds of engineering information:
 
-- **Specification** — what the approved system should do.
+- **Canonical architecture** — approved business ownership, roles, permissions, workflow ownership, and system invariants. Read [SYSTEM_ARCHITECTURE.md](../architecture/SYSTEM_ARCHITECTURE.md) before planning, reviewing, or changing the system.
+- **Specification** — what an approved milestone should do, consistently with the canonical architecture.
 - **Implementation plan** — how a milestone is intended to be built.
 - **Current state** — what is actually present in the repository now.
 
 An agent must inspect current code before assuming a plan checkbox reflects implementation state.
 
+Explicit current user requirements take precedence; architectural changes must be
+recorded in the canonical document and aligned with affected specifications.
+Current-state records and code establish implementation evidence, not permission
+to redefine the approved business model. See [AGENTS.md](../../AGENTS.md) for the
+requirement precedence and mandatory reading rules.
+
 ## Core engineering documents
 
+- [SARI_SUPPLY_TASKS.md](../../SARI_SUPPLY_TASKS.md) — root implementation guide with bounded feature prompts, model selection, dependencies, parallel work rules and acceptance gates; inspect existing code before rebuilding.
 - `CURRENT_STATE.md` — current implementation status and active milestone.
 - `../../design.md` — authoritative shared UI, UX, and copy contract.
 - `UI_REDESIGN.md` — redesign behavior, deterministic screen evidence and verification limits.
@@ -46,7 +54,8 @@ Agents may load only the skill relevant to the current task.
 
 ## Product and architecture
 
-- `../architecture/SARI_SUPPLY_PRODUCTION_PLAN.md`
+- [Canonical System Architecture](../architecture/SYSTEM_ARCHITECTURE.md) — authoritative business and system contract, with current gaps.
+- [Production Plan](../architecture/SARI_SUPPLY_PRODUCTION_PLAN.md) — production roadmap and technical direction.
 
 ## Current milestone references
 

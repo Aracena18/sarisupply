@@ -310,23 +310,23 @@ class _RestockScreenState extends State<RestockScreen>
   Color _statusColor(RestockProposalStatus status) {
     switch (status) {
       case RestockProposalStatus.pendingApproval:
-        return Colors.orange;
+        return SariSupplyColors.orange500;
       case RestockProposalStatus.approved:
-        return Colors.blue;
+        return SariSupplyColors.info;
       case RestockProposalStatus.picking:
       case RestockProposalStatus.picked:
-        return Colors.indigo;
+        return SariSupplyColors.info;
       case RestockProposalStatus.packing:
       case RestockProposalStatus.packed:
-        return Colors.purple;
+        return SariSupplyColors.info;
       case RestockProposalStatus.dispatched:
       case RestockProposalStatus.received:
-        return Colors.green;
+        return SariSupplyColors.success;
       case RestockProposalStatus.rejected:
       case RestockProposalStatus.cancelled:
-        return Colors.red;
+        return SariSupplyColors.error;
       case RestockProposalStatus.draft:
-        return Colors.grey;
+        return SariSupplyColors.ink300;
     }
   }
 
@@ -337,27 +337,38 @@ class _RestockScreenState extends State<RestockScreen>
         context,
         title: 'Restock Orders',
       ),
-      body: SariSupplyPageContent(
-        maxWidth: 600,
-        child: Column(
-          children: [
-            TabBar(
-              controller: _tabController,
-              tabs: const [
-                Tab(text: 'Request Restock'),
-                Tab(text: 'Order Status'),
-              ],
-            ),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Padding(
+              padding: EdgeInsets.all(
+                MediaQuery.sizeOf(context).width < 600
+                    ? SariSupplySpacing.md
+                    : SariSupplySpacing.lg,
+              ),
+              child: Column(
                 children: [
-                  _buildRequestTab(),
-                  _buildStatusTab(),
+                  TabBar(
+                    controller: _tabController,
+                    tabs: const [
+                      Tab(text: 'Request Restock'),
+                      Tab(text: 'Order Status'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildRequestTab(),
+                        _buildStatusTab(),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -380,7 +391,7 @@ class _RestockScreenState extends State<RestockScreen>
 
           // Low Stock Alert Card
           Card(
-            color: Colors.amber.shade50,
+            color: SariSupplyColors.warning.withValues(alpha: 0.1),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -389,12 +400,12 @@ class _RestockScreenState extends State<RestockScreen>
                   Row(
                     children: [
                       const Icon(Icons.warning_amber_rounded,
-                          color: Colors.amber),
+                          color: SariSupplyColors.warning),
                       const SizedBox(width: 8),
                       Text(
                         'Low Stock Items (${_shortages.length})',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              color: Colors.amber.shade900,
+                              color: SariSupplyColors.warning,
                               fontWeight: FontWeight.bold,
                             ),
                       ),
@@ -459,7 +470,7 @@ class _RestockScreenState extends State<RestockScreen>
                   child: Text(
                     'No items in restock draft.\nSelect from low stock items above to begin.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey.shade600),
+                    style: TextStyle(color: SariSupplyColors.ink600),
                   ),
                 ),
               ),
@@ -483,7 +494,8 @@ class _RestockScreenState extends State<RestockScreen>
                             Text(
                                 'SKU: ${item.sku} · Current: ${item.currentStock}',
                                 style: TextStyle(
-                                    fontSize: 12, color: Colors.grey.shade600)),
+                                    fontSize: 12,
+                                    color: SariSupplyColors.ink600)),
                           ],
                         ),
                       ),
@@ -557,7 +569,7 @@ class _RestockScreenState extends State<RestockScreen>
       return Center(
         child: Text(
           'No restock orders found.',
-          style: TextStyle(color: Colors.grey.shade600),
+          style: TextStyle(color: SariSupplyColors.ink600),
         ),
       );
     }
@@ -588,7 +600,7 @@ class _RestockScreenState extends State<RestockScreen>
                           horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: color.withAlpha(30),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(SariSupplyRadii.xs),
                         border: Border.all(color: color),
                       ),
                       child: Text(
@@ -605,19 +617,22 @@ class _RestockScreenState extends State<RestockScreen>
                 const SizedBox(height: 8),
                 Text(
                   'Requested: ${p.requestedAt.toLocal().toString().split('.').first}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style:
+                      TextStyle(fontSize: 12, color: SariSupplyColors.ink600),
                 ),
                 if (p.reviewedBy != null) ...[
                   Text(
                     'Reviewed by: ${p.reviewedBy}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style:
+                        TextStyle(fontSize: 12, color: SariSupplyColors.ink600),
                   ),
                 ],
                 if (p.rejectionReason != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     'Reason: ${p.rejectionReason}',
-                    style: const TextStyle(fontSize: 12, color: Colors.red),
+                    style: const TextStyle(
+                        fontSize: 12, color: SariSupplyColors.error),
                   ),
                 ],
                 if (!_canonicalProposalIds.contains(p.id))

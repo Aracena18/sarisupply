@@ -414,7 +414,20 @@ A merchant application conceptually contains:
 - reviewNotes;
 - approvedMerchantId.
 
-Application approval is a protected, idempotent backend operation.
+Application approval is a protected, idempotent backend operation. The active
+Owner of the supplying company is the routine reviewer in Admin / Operations.
+The trusted server checks that Company's current membership and role grant
+inside the approval transaction; Warehouse Operations and Store Owner roles do
+not authorize this path. The existing separate Platform Admin review path is
+preserved. The Company Owner can read only the submitted application packet;
+approval creates the independent merchant, its first branch, and the applicant's
+Owner membership without granting the supplying company access to store retail
+data.
+
+Rejection requires a reason that is returned to the applicant, who may update
+and resubmit the application. Every decision records the reviewer identity and
+an audit event. Repeated approval requests for the same operation remain
+idempotent and do not create duplicate stores or memberships.
 
 Repeated approval requests for the same already-approved application return the established result and do not create duplicate merchants.
 

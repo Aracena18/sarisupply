@@ -14,6 +14,7 @@ import 'package:sarisupply_pos/features/device_setup/presentation/device_setup_s
 import 'package:sarisupply_pos/features/owner_onboarding/presentation/owner_onboarding_gate.dart';
 import 'package:sarisupply_pos/features/management/presentation/management_screen.dart';
 import 'package:sarisupply_pos/features/management/presentation/management_form_dialog.dart';
+import 'package:sarisupply_pos/features/management/presentation/store_overview_screen.dart';
 import 'package:sarisupply_pos/features/catalog/product_dialog.dart';
 import 'package:sarisupply_pos/features/catalog/catalog_screen.dart';
 import 'package:sarisupply_pos/features/catalog/catalog_branch_screen.dart';
@@ -39,7 +40,11 @@ ManagementScreen management(FixtureManagement repo) => ManagementScreen(
     management: repo,
     membershipRepository: FixtureMemberships(),
     cashiers: FixtureCashiers(),
-    devices: FixtureDevices());
+    devices: FixtureDevices(),
+    loadOverviewData: (_, branchId) async => StoreOverviewData(
+          sales: DailySalesSummary(date: '2026-10-06', branchId: branchId),
+          lowStock: const [],
+        ));
 Future<void> flushStore(WidgetTester tester) async {
   await tester
       .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 80)));

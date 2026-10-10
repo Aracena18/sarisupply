@@ -33,6 +33,42 @@ void main() {
     await store.close();
     await dir.delete(recursive: true);
   });
+  test(
+      'low stock filters before pagination beyond 50 products and includes pending local stock',
+      () async {
+    final products = List.generate(
+        65,
+        (i) => CatalogProduct(
+                id: 'extra$i',
+                sku: 'EXTRA$i',
+                name: 'Item ${i.toString().padLeft(3, '0')}',
+                baseUnit: 'piece',
+                revision: 1,
+                active: true,
+                units: [
+                  CatalogUnit(name: 'piece', factor: 1, priceCentavos: 100)
+                ]));
+    await store.applyCatalog(DeltaPage(cursor: 51, hasMore: true, changes: [
+      for (var i = 0; i < 50; i++) CatalogChange(i + 2, products[i])
+    ]));
+    await store.applyCatalog(DeltaPage(cursor: 66, hasMore: false, changes: [
+      for (var i = 50; i < products.length; i++)
+        CatalogChange(i + 2, products[i])
+    ]));
+    await store.recordCount(
+        id: 'high-stock',
+        productId: 'extra0',
+        quantity: 30,
+        kind: 'opening',
+        reason: 'Opening');
+    final first = await store.lowStockPage();
+    final second = await store.lowStockPage(offset: first.length);
+    expect(first.length, 50);
+    expect(second.length, 15);
+    expect([...first, ...second].any((r) => r.product.id == 'extra0'), false);
+    expect([...first, ...second].any((r) => r.product.id == 'extra64'), true);
+  });
+
   test('pending receiving follows remote changes and settles without doubling',
       () async {
     await store.applyStock(DeltaPage(

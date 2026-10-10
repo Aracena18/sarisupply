@@ -1,0 +1,6 @@
+{
+  "deploy": {
+    "org": "aracena18",
+    "app": "aracena18-sarisupply-dev-api"
+  }
+}

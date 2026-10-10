@@ -1,5 +1,6 @@
 export 'src/money.dart';
 export 'src/auth/auth_enums.dart';
+export 'src/auth/authorization_workspace.dart';
 export 'src/auth/branch.dart';
 export 'src/auth/cashier.dart';
 export 'src/auth/merchant_application.dart';
@@ -24,3 +25,6 @@ export 'src/reports/inventory_valuation_report.dart';
 export 'src/reports/notification.dart';
 
 export 'src/checkout/credit_gateway.dart';
+
+export 'src/delivery/driver_location.dart';
+export 'src/company/company_operations.dart';

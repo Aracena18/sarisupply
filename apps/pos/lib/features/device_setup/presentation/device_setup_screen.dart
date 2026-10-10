@@ -176,8 +176,7 @@ class _DeviceSetupScreenState extends State<DeviceSetupScreen> {
                     Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: Text(_error!,
-                            style: TextStyle(
-                                color: Theme.of(context).colorScheme.error))),
+                            style: TextStyle(color: SariSupplyColors.error))),
                   const SizedBox(height: 20),
                   FilledButton(
                       onPressed: _busy ||

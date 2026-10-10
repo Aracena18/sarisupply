@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:sarisupply_models/sarisupply_models.dart';
 import 'https_merchant_gateway.dart';
+import 'driver_location_gateway.dart';
 import 'merchant_application_functions.dart';
 
 abstract interface class DeliveryGateway {
@@ -20,7 +21,8 @@ abstract interface class DeliveryGateway {
   });
 }
 
-final class DeliveryFunctions implements DeliveryGateway {
+final class DeliveryFunctions
+    implements DeliveryGateway, DriverLocationGateway {
   DeliveryFunctions({required MerchantCallableGateway gateway})
       : _gateway = gateway;
 
@@ -28,6 +30,60 @@ final class DeliveryFunctions implements DeliveryGateway {
       DeliveryFunctions(gateway: HttpsMerchantGateway.forApp(Firebase.app()));
 
   final MerchantCallableGateway _gateway;
+
+  @override
+  Future<DriverLocationSnapshot> updateDriverLocation(String merchantId,
+      String runId, DriverLocationFix fix, int eventAtMs) async {
+    final result = await _gateway.call('manageDeliveries', {
+      'action': 'updateDriverLocation',
+      'merchantId': merchantId,
+      'runId': runId,
+      'eventAtMs': eventAtMs,
+      ...fix.toMap(),
+    });
+    final snapshot = DriverLocationSnapshot.fromMap(
+        Map<String, dynamic>.from(result['location'] as Map));
+    if (snapshot.runId != runId) {
+      throw const FormatException('Location run mismatch');
+    }
+    return snapshot;
+  }
+
+  @override
+  Future<void> pauseDriverLocation(
+      String merchantId, String runId, int eventAtMs) async {
+    final result = await _gateway.call('manageDeliveries', {
+      'action': 'pauseDriverLocation',
+      'merchantId': merchantId,
+      'runId': runId,
+      'eventAtMs': eventAtMs,
+    });
+    if (result['runId'] != runId || result['status'] != 'paused') {
+      throw const FormatException('Invalid location acknowledgement');
+    }
+  }
+
+  @override
+  Future<DriverLocationSnapshot?> readDriverLocation(
+      String merchantId, String runId) async {
+    final result = await _gateway.call('manageDeliveries', {
+      'action': 'readDriverLocation',
+      'merchantId': merchantId,
+      'runId': runId,
+    });
+    if (result['runId'] != runId) {
+      throw const FormatException('Location run mismatch');
+    }
+    final raw = result['location'];
+    if (raw == null) return null;
+    final snapshot =
+        DriverLocationSnapshot.fromMap(Map<String, dynamic>.from(raw as Map));
+    if (snapshot.runId != runId) {
+      throw const FormatException('Location run mismatch');
+    }
+    return snapshot;
+  }
+
   Future<List<Map<String, Object?>>> workspaces() async {
     final result = await _gateway.call('getDriverWorkspaces', {});
     return (result['workspaces'] as List)

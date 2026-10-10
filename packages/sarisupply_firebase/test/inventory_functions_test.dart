@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sarisupply_firebase/sarisupply_firebase.dart';
 import 'package:sarisupply_models/sarisupply_models.dart';
@@ -6,11 +7,13 @@ class Gateway implements MerchantCallableGateway {
   Map<String, Object?> result = {};
   String? command;
   Map<String, Object?>? payload;
+  Object? error;
   @override
   Future<Map<String, Object?>> call(
       String name, Map<String, Object?> data) async {
     command = name;
     payload = data;
+    if (error != null) throw error!;
     return result;
   }
 }
@@ -138,6 +141,35 @@ void main() {
     expect(ack.status, 'conflict');
     expect(ack.message, 'Stock changed');
     expect(gateway.command, 'recordStockAdjustment');
+  });
+
+  test('permanent push rejection becomes blocked; transient still throws',
+      () async {
+    final gateway = Gateway();
+    final adapter = InventoryFunctions(gateway: gateway);
+    const op = StockOperation(
+        id: 't1-p1',
+        productId: 'p1',
+        kind: 'transferOut',
+        quantity: 5,
+        expectedRevision: 1,
+        reason: 'Transfer to nowhere',
+        details: {
+          'transferId': 't1',
+          'sourceBranchId': 'b1',
+          'destinationBranchId': 'nowhere',
+        });
+    gateway.error = FirebaseException(
+        plugin: 'test',
+        code: 'failed-precondition',
+        message: 'Destination branch is unavailable');
+    final ack = await adapter.push('m', 'b1', op);
+    expect(ack.operationId, 't1-p1');
+    expect(ack.status, 'blocked');
+    expect(ack.message, 'Destination branch is unavailable');
+    gateway.error = FirebaseException(plugin: 'test', code: 'unavailable');
+    await expectLater(
+        adapter.push('m', 'b1', op), throwsA(isA<FirebaseException>()));
   });
 
   test('branch transfers dispatch and receive properly', () async {

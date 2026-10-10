@@ -11,7 +11,8 @@ final class ClientConfiguration {
         uri.hasQuery ||
         uri.hasFragment ||
         (uri.path.isNotEmpty && uri.path != '/')) {
-      throw const ClientConfigurationException();
+      throw Exception(
+          "ClientConfigurationException from backendOrigin, value: $value");
     }
     return uri;
   }
@@ -23,7 +24,8 @@ final class ClientConfiguration {
         '594903185972-1dlngb8a6i0j6i87ss6nbaab2u1krdqg.apps.googleusercontent.com',
       'sarisupply-prod-aracena18' =>
         '110781011916-88507t6k0glkskp51460qa6bcm6oti8b.apps.googleusercontent.com',
-      _ => throw const ClientConfigurationException(),
+      _ => throw Exception(
+          "ClientConfigurationException from googleServerClientId, projectId: $projectId"),
     };
   }
 }

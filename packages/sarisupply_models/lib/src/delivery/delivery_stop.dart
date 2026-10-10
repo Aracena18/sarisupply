@@ -47,6 +47,8 @@ class DeliveryStop {
     this.contactPerson = '',
     this.contactPhone = '',
     this.packageManifestId,
+    this.paymentMethod = 'cashOnDelivery',
+    this.amountDueCentavos,
     this.status = DeliveryStopStatus.pending,
     this.items = const [],
     this.proof,
@@ -65,6 +67,8 @@ class DeliveryStop {
   final String contactPerson;
   final String contactPhone;
   final String? packageManifestId;
+  final String paymentMethod;
+  final int? amountDueCentavos;
   final DeliveryStopStatus status;
   final List<DeliveryStopItem> items;
   final DeliveryProof? proof;
@@ -100,6 +104,8 @@ class DeliveryStop {
     String? contactPerson,
     String? contactPhone,
     String? packageManifestId,
+    String? paymentMethod,
+    int? amountDueCentavos,
     DeliveryStopStatus? status,
     List<DeliveryStopItem>? items,
     DeliveryProof? proof,
@@ -118,6 +124,8 @@ class DeliveryStop {
         contactPerson: contactPerson ?? this.contactPerson,
         contactPhone: contactPhone ?? this.contactPhone,
         packageManifestId: packageManifestId ?? this.packageManifestId,
+        paymentMethod: paymentMethod ?? this.paymentMethod,
+        amountDueCentavos: amountDueCentavos ?? this.amountDueCentavos,
         status: status ?? this.status,
         items: items ?? this.items,
         proof: proof ?? this.proof,
@@ -137,6 +145,8 @@ class DeliveryStop {
         'contactPerson': contactPerson,
         'contactPhone': contactPhone,
         'packageManifestId': packageManifestId,
+        'paymentMethod': paymentMethod,
+        'amountDueCentavos': amountDueCentavos,
         'status': status.name,
         'items': items.map((i) => i.toMap()).toList(),
         'proof': proof?.toMap(),
@@ -156,6 +166,8 @@ class DeliveryStop {
         contactPerson: map['contactPerson'] as String? ?? '',
         contactPhone: map['contactPhone'] as String? ?? '',
         packageManifestId: map['packageManifestId'] as String?,
+        paymentMethod: map['paymentMethod'] as String? ?? 'cashOnDelivery',
+        amountDueCentavos: (map['amountDueCentavos'] as num?)?.toInt(),
         status: DeliveryStopStatus.fromString(map['status'] as String? ?? ''),
         items: (map['items'] as List<dynamic>? ?? [])
             .map((i) =>

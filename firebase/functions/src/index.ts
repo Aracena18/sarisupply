@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase-admin/app';
 initializeApp();
 
 export {
+  listPendingMerchantApplications,
   reviewMerchantApplication,
   saveMerchantApplicationDraft,
   submitMerchantApplication,

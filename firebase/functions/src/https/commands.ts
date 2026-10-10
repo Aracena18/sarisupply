@@ -1,4 +1,9 @@
+import { discoverSupplyingCompany, readCompanyOperations, mutateCompanyOperations } from '../company/operations-service';
 import { readOperationalWorkspace } from '../management/operations-read-service';
+import { acceptCompanyInvitation, getAuthorizationWorkspaces, getCompanyWorkspace,
+  listCompanyInvitations, listCompanyWarehouses, listMyCompanyInvitations,
+  manageCompanyInvitations, readCompanyStaff, removeCompanyMemberRole,
+  saveCompanyWarehouse } from '../company/workspace-service';
 import { manageCustomers } from '../checkout/customer-service';
 import { recordCheckoutOperation, resolveCatalogQuotes, approveCheckoutReversal } from '../checkout/checkout-service';
 import { Firestore } from 'firebase-admin/firestore';
@@ -15,6 +20,7 @@ import { initiateBranchTransfer, receiveBranchTransfer, readIncomingTransfers } 
 import { listManagementRecords } from '../management/workspace-service';
 import { manageSuppliers, managePurchaseOrders, manageRestockProposals, readProcurementWorkspace, manageWarehouses } from '../procurement/procurement-service';
 import { manageDeliveries, getDriverWorkspaces } from '../delivery/delivery-service';
+import { ProductImageService } from '../media/product-image-service';
 
 type Command = (identity: AuthRequest, data: Record<string, unknown>) => Promise<unknown>;
 
@@ -22,9 +28,26 @@ type Command = (identity: AuthRequest, data: Record<string, unknown>) => Promise
 // and derive authority from the verified identity and current Firestore state.
 export function createCommandDispatcher(
   db: Firestore, mintToken: device.MintDeviceToken, hasher: ReturnType<typeof createPinHasher>,
+  media = new ProductImageService(db, 'dev'),
 ) {
   const commands: Record<string, Command> = {
+    discoverSupplyingCompany: (r,d) => discoverSupplyingCompany(db,r,d),
+    readCompanyOperations: (r,d) => readCompanyOperations(db,r,d),
+    mutateCompanyOperations: (r,d) => mutateCompanyOperations(db,r,d),
+    prepareProductImageUpload: (r, d) => media.prepare(r, d),
+    completeProductImageUpload: (r, d) => media.complete(r, d),
     readOperationalWorkspace: (r,d) => readOperationalWorkspace(db,r,d),
+    getCompanyWorkspace: (r, d) => getCompanyWorkspace(db, r, d),
+    getAuthorizationWorkspaces: (r, d) => getAuthorizationWorkspaces(db, r, d),
+    listMyCompanyInvitations: (r, d) => listMyCompanyInvitations(db, r, d),
+    listCompanyInvitations: (r, d) => listCompanyInvitations(db, r, d),
+    createCompanyInvitation: (r, d) => manageCompanyInvitations(db, r, { ...d, action: 'create' }),
+    revokeCompanyInvitation: (r, d) => manageCompanyInvitations(db, r, { ...d, action: 'revoke' }),
+    acceptCompanyInvitation: (r, d) => acceptCompanyInvitation(db, r, d),
+    listCompanyStaff: (r, d) => readCompanyStaff(db, r, d),
+    removeCompanyMemberRole: (r, d) => removeCompanyMemberRole(db, r, d),
+    listCompanyWarehouses: (r, d) => listCompanyWarehouses(db, r, d),
+    saveCompanyWarehouse: (r, d) => saveCompanyWarehouse(db, r, d),
     manageCustomers: (r,d) => manageCustomers(db,r,d),
     recordCheckoutOperation: (r,d) => recordCheckoutOperation(db,r,d),
     approveCheckoutReversal: (r,d) => approveCheckoutReversal(db,r,d),
@@ -47,6 +70,7 @@ export function createCommandDispatcher(
     listManagementRecords: (r, d) => listManagementRecords(db, r, { merchantId: d.merchantId, kind: d.kind, cursor: d.cursor }),
     saveMerchantApplicationDraft: (r, d) => application.saveMerchantApplicationDraft(db, requireHuman(r), d as unknown as application.DraftInput),
     submitMerchantApplication: (r, d) => application.submitMerchantApplication(db, requireHuman(r), d.applicationId as string),
+    listPendingMerchantApplications: (r, d) => application.listPendingMerchantApplications(db, r, d.companyId as string),
     reviewMerchantApplication: (r, d) => application.reviewMerchantApplication(db, r, d as unknown as application.ReviewInput),
     createManagerInvitation: (r, d) => membership.createManagerInvitation(db, r, d as unknown as Parameters<typeof membership.createManagerInvitation>[2]),
     listMyInvitations: async (r) => ({ invitations: await membership.listMyInvitations(db, r) }),

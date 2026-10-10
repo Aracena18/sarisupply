@@ -1,0 +1,43 @@
+{
+  "barcodePurpose": "Internal presentation EAN-13 numbers; these are not manufacturer GTINs.",
+  "photoPurpose": "Representative category photographs, not manufacturer package photographs.",
+  "photos": {
+    "canned": "https://images.unsplash.com/photo-1753826226798-2e2570fec65e?auto=format&fit=crop&w=400&q=80",
+    "cola": "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=400&q=80",
+    "snacks": "https://images.unsplash.com/photo-1566478989037-eec170784d0b?auto=format&fit=crop&w=400&q=80",
+    "noodles": "https://images.unsplash.com/photo-1612927601601-6638404737ce?auto=format&fit=crop&w=400&q=80",
+    "coffee": "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?auto=format&fit=crop&w=400&q=80",
+    "rice": "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=400&q=80",
+    "personal": "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?auto=format&fit=crop&w=400&q=80",
+    "oil": "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=400&q=80",
+    "bread": "https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=400&q=80",
+    "milk": "https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=400&q=80",
+    "water": "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=400&q=80",
+    "chocolate": "https://images.unsplash.com/photo-1511381939415-e44015466834?auto=format&fit=crop&w=400&q=80",
+    "juice": "https://images.unsplash.com/photo-1600271886742-f049cd451bba?auto=format&fit=crop&w=400&q=80",
+    "laptop": "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=400&q=80",
+    "pantry": "https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?auto=format&fit=crop&w=400&q=80"
+  },
+  "products": [
+    {"id":"demo-tuna-flakes","sku":"DEMO-CANNED-004","name":"Tuna Flakes in Oil 155 g","photo":"canned","retail":4200,"wholesale":3600,"storeStock":36,"warehouseStock":360},
+    {"id":"demo-mackerel","sku":"DEMO-CANNED-005","name":"Mackerel in Tomato Sauce 155 g","photo":"canned","retail":2800,"wholesale":2300,"storeStock":30,"warehouseStock":300},
+    {"id":"demo-pork-beans","sku":"DEMO-CANNED-006","name":"Pork and Beans 230 g","photo":"canned","retail":3200,"wholesale":2700,"storeStock":24,"warehouseStock":240},
+    {"id":"demo-cream-biscuits","sku":"DEMO-SNACK-005","name":"Cream Sandwich Biscuits 30 g","photo":"snacks","retail":1000,"wholesale":750,"storeStock":60,"warehouseStock":600},
+    {"id":"demo-wafer-sticks","sku":"DEMO-SNACK-006","name":"Chocolate Wafer Sticks 25 g","photo":"chocolate","retail":1200,"wholesale":900,"storeStock":48,"warehouseStock":480},
+    {"id":"demo-peanut-butter","sku":"DEMO-PANTRY-007","name":"Peanut Butter 170 g","photo":"bread","retail":5500,"wholesale":4700,"storeStock":18,"warehouseStock":180},
+    {"id":"demo-strawberry-jam","sku":"DEMO-PANTRY-008","name":"Strawberry Jam 200 g","photo":"bread","retail":6500,"wholesale":5500,"storeStock":18,"warehouseStock":180},
+    {"id":"demo-chocolate-drink","sku":"DEMO-DAIRY-003","name":"Chocolate Drink Sachet 22 g","photo":"chocolate","retail":1000,"wholesale":750,"storeStock":60,"warehouseStock":600},
+    {"id":"demo-powdered-milk","sku":"DEMO-DAIRY-004","name":"Powdered Milk Sachet 33 g","photo":"milk","retail":1400,"wholesale":1100,"storeStock":48,"warehouseStock":480},
+    {"id":"demo-iced-tea","sku":"DEMO-DRINK-004","name":"Bottled Iced Tea 350 ml","photo":"juice","retail":2500,"wholesale":2000,"storeStock":36,"warehouseStock":360},
+    {"id":"demo-lemon-lime-soda","sku":"DEMO-DRINK-005","name":"Lemon-Lime Soda 330 ml","photo":"cola","retail":2500,"wholesale":2000,"storeStock":36,"warehouseStock":360},
+    {"id":"demo-energy-drink","sku":"DEMO-DRINK-006","name":"Energy Drink 250 ml","photo":"juice","retail":3000,"wholesale":2400,"storeStock":24,"warehouseStock":240},
+    {"id":"demo-tomato-sauce","sku":"DEMO-PANTRY-009","name":"Tomato Sauce 250 g","photo":"canned","retail":2200,"wholesale":1800,"storeStock":30,"warehouseStock":300},
+    {"id":"demo-banana-ketchup","sku":"DEMO-PANTRY-010","name":"Banana Ketchup 320 g","photo":"oil","retail":2800,"wholesale":2300,"storeStock":24,"warehouseStock":240},
+    {"id":"demo-seasoning","sku":"DEMO-PANTRY-011","name":"All-Purpose Seasoning Sachet 8 g","photo":"pantry","retail":500,"wholesale":350,"storeStock":72,"warehouseStock":720},
+    {"id":"demo-black-pepper","sku":"DEMO-PANTRY-012","name":"Ground Black Pepper Sachet 10 g","photo":"pantry","retail":700,"wholesale":500,"storeStock":48,"warehouseStock":480},
+    {"id":"demo-dishwashing-paste","sku":"DEMO-HOME-004","name":"Dishwashing Paste 200 g","photo":"personal","retail":2500,"wholesale":2000,"storeStock":24,"warehouseStock":240},
+    {"id":"demo-fabric-conditioner","sku":"DEMO-HOME-005","name":"Fabric Conditioner Sachet 25 ml","photo":"personal","retail":700,"wholesale":500,"storeStock":60,"warehouseStock":600},
+    {"id":"demo-toothbrush","sku":"DEMO-PERSONAL-004","name":"Soft Toothbrush","photo":"personal","retail":2000,"wholesale":1500,"storeStock":30,"warehouseStock":300},
+    {"id":"demo-sanitary-pads","sku":"DEMO-PERSONAL-005","name":"Sanitary Pads Pack of 8","photo":"personal","retail":4000,"wholesale":3300,"storeStock":24,"warehouseStock":240}
+  ]
+}

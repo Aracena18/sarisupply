@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -126,19 +127,28 @@ final class HttpsMerchantGateway implements MerchantCallableGateway {
     }
   }
 
+  Future<T> _timed<T>(String name, Future<T> Function() action) async {
+    final task = TimelineTask()..start(name);
+    try {
+      return await action();
+    } finally {
+      task.finish();
+    }
+  }
+
   Future<Map<String, Object?>> _call(
       String name, Map<String, Object?> payload, Completer<void> abort) async {
     if (!RegExp(r'^[A-Za-z]+$').hasMatch(name)) {
       throw ArgumentError('Invalid command name');
     }
-    final token = await _idToken();
+    final token = await _timed('https.authToken', _idToken);
     if (token == null || token.isEmpty) {
       throw FirebaseFunctionsException(
           code: 'unauthenticated', message: 'Sign in required');
     }
     final String? attestation;
     try {
-      attestation = await _appCheckToken();
+      attestation = await _timed('https.appCheck', _appCheckToken);
     } on FirebaseException {
       // Failed attestation is retryable; it is never proof of device revocation.
       throw FirebaseFunctionsException(
@@ -160,8 +170,8 @@ final class HttpsMerchantGateway implements MerchantCallableGateway {
         'x-sarisupply-environment': _environment.name
       })
       ..body = jsonEncode({'data': payload});
-    final response =
-        await http.Response.fromStream(await _client.send(request));
+    final response = await _timed('https.request.$name',
+        () async => http.Response.fromStream(await _client.send(request)));
     Object? body;
     try {
       body = jsonDecode(response.body);

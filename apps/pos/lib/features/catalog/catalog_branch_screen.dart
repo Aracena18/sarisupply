@@ -62,6 +62,9 @@ class _CatalogBranchScreenState extends State<CatalogBranchScreen> {
             openStore: () => openInventory(member.merchantId, branch.id),
             gateway: widget.gateway,
             canUpload: true,
+            authorizationRevision: '${member.role.name}:'
+                '${member.updatedAt.microsecondsSinceEpoch}:'
+                '${member.allBranches}:${member.branchIds.join(',')}',
             canEdit: member.role == MerchantRole.owner)));
   }
 
@@ -78,6 +81,9 @@ class _CatalogBranchScreenState extends State<CatalogBranchScreen> {
           openStore: () => openInventory(member.merchantId, branch.id),
           gateway: widget.gateway,
           canUpload: true,
+          authorizationRevision: '${member.role.name}:'
+              '${member.updatedAt.microsecondsSinceEpoch}:'
+              '${member.allBranches}:${member.branchIds.join(',')}',
           canEdit: member.role == MerchantRole.owner);
     }
     return Scaffold(

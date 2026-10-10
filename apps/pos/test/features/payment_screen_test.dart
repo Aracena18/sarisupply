@@ -8,7 +8,7 @@ void main() {
   testWidgets(
       'cash shows change and double save creates one local receipt despite offline sync',
       (tester) async {
-    final f = CheckoutFixture();
+    final f = CheckoutFixture(productName: 'Test product');
     await tester.runAsync(f.create);
     addTearDown(f.dispose);
     await tester.pumpWidget(f.screen());
@@ -35,7 +35,7 @@ void main() {
   testWidgets(
       'receipt presentation metadata failure retains the sale and recovery without an unhandled error',
       (tester) async {
-    final f = CheckoutFixture();
+    final f = CheckoutFixture(productName: 'Test product');
     await tester.runAsync(f.create);
     addTearDown(f.dispose);
     final db = await tester.runAsync(() => databaseFactoryFfi.openDatabase(
@@ -69,7 +69,7 @@ void main() {
   testWidgets(
       'manual QR requires reference and confirmation; resume keeps draft and expiry blocks save',
       (tester) async {
-    final f = CheckoutFixture();
+    final f = CheckoutFixture(productName: 'Test product');
     await tester.runAsync(f.create);
     addTearDown(f.dispose);
     await tester.pumpWidget(f.screen());
@@ -102,7 +102,7 @@ void main() {
   testWidgets(
       'commit failure retains frozen UUID and exact tender for retry after restart',
       (tester) async {
-    final f = CheckoutFixture();
+    final f = CheckoutFixture(productName: 'Test product');
     await tester.runAsync(f.create);
     addTearDown(f.dispose);
     await tester.pumpWidget(f.screen());
@@ -150,7 +150,7 @@ void main() {
   testWidgets(
       'QR inputs survive wallet switching and restart; QR never increases cash',
       (tester) async {
-    final f = CheckoutFixture();
+    final f = CheckoutFixture(productName: 'Test product');
     await tester.runAsync(f.create);
     addTearDown(f.dispose);
     await tester.pumpWidget(f.screen());
@@ -201,7 +201,7 @@ void main() {
   testWidgets(
       'catalog refresh never silently reprices cart; explicit review updates quote',
       (tester) async {
-    final f = CheckoutFixture();
+    final f = CheckoutFixture(productName: 'Test product');
     await tester.runAsync(f.create);
     addTearDown(f.dispose);
     await tester.pumpWidget(f.screen());
@@ -210,7 +210,7 @@ void main() {
     final changed = CatalogProduct(
         id: 'p',
         sku: 'MILK',
-        name: 'Milk',
+        name: 'Test product',
         baseUnit: 'piece',
         active: true,
         revision: 2,
@@ -243,5 +243,8 @@ void main() {
     await tester.tap(find.text('Apply changes'));
     await pumpCheckout(tester);
     expect(find.text('Pay ₱80.00'), findsOneWidget);
+    await pumpCheckout(tester);
+    await tester.pumpWidget(const SizedBox());
+    await pumpCheckout(tester);
   });
 }

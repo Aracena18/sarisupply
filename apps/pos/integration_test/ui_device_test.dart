@@ -20,7 +20,7 @@ import '../test/support/ui_fixtures.dart';
 // in-memory native SQLite database. It makes no Firebase or real storage calls.
 Widget deviceApp(Widget home) => MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: SariSupplyTheme.light(),
+      theme: SariSupplyTheme.light,
       builder: (context, child) {
         const scale = String.fromEnvironment('SARISUPPLY_TEST_TEXT_SCALE');
         return scale.isEmpty

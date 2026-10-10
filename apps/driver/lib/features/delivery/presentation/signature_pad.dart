@@ -1,3 +1,4 @@
+import 'package:sarisupply_design_system/sarisupply_design_system.dart';
 import 'package:flutter/material.dart';
 
 /// Touch signature capture canvas that converts finger strokes to SVG path data.
@@ -96,7 +97,7 @@ class _SignaturePadState extends State<SignaturePad> {
           height: widget.height,
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(SariSupplyRadii.sm),
             border: Border.all(
               color: hasPoints
                   ? theme.colorScheme.primary
@@ -105,7 +106,7 @@ class _SignaturePadState extends State<SignaturePad> {
             ),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(SariSupplyRadii.sm),
             child: Stack(
               children: [
                 Positioned.fill(

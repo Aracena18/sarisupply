@@ -201,28 +201,28 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                   child: _buildMetricCard(
                       title: 'Consolidated Net Sales',
                       value: _formatPhp(totalNet),
-                      color: Colors.green.shade800,
+                      color: SariSupplyColors.success,
                       icon: Icons.payments)),
               SizedBox(
                   width: width,
                   child: _buildMetricCard(
                       title: 'Total Gross Sales',
                       value: _formatPhp(totalGross),
-                      color: Colors.blue.shade800,
+                      color: SariSupplyColors.info,
                       icon: Icons.receipt_long)),
               SizedBox(
                   width: width,
                   child: _buildMetricCard(
                       title: 'Total Transactions',
                       value: '$totalTx',
-                      color: Colors.purple.shade800,
+                      color: SariSupplyColors.info,
                       icon: Icons.shopping_cart)),
               SizedBox(
                   width: width,
                   child: _buildMetricCard(
                       title: 'Total Refunds',
                       value: '-${_formatPhp(totalRefunds)}',
-                      color: Colors.amber.shade900,
+                      color: SariSupplyColors.warning,
                       icon: Icons.assignment_return)),
             ]);
           }),
@@ -267,8 +267,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               return Card(
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(SariSupplyRadii.md),
+                  side: BorderSide(color: SariSupplyColors.divider),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -289,7 +289,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
-                              color: Colors.green.shade800,
+                              color: SariSupplyColors.success,
                             ),
                           ),
                         ],
@@ -304,7 +304,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                           Text(
                             'Cash: ${_formatPhp(b.tenders.cashCentavos)} · QR: ${_formatPhp(b.tenders.qrCentavos)} · Credit: ${_formatPhp(b.tenders.creditCentavos)}',
                             style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade700),
+                                fontSize: 12, color: SariSupplyColors.ink600),
                           ),
                         ],
                       ),
@@ -331,8 +331,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(SariSupplyRadii.md),
+              side: BorderSide(color: SariSupplyColors.divider),
             ),
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -342,7 +342,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                   Row(
                     children: [
                       const Icon(Icons.security,
-                          color: Colors.indigo, size: 28),
+                          color: SariSupplyColors.info, size: 28),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -360,7 +360,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                             Text(
                               'Paste an encrypted backup export JSON to audit its SHA-256 integrity manifest and decrypt data.',
                               style: TextStyle(
-                                  fontSize: 12, color: Colors.grey.shade600),
+                                  fontSize: 12, color: SariSupplyColors.ink600),
                             ),
                           ],
                         ),
@@ -404,21 +404,21 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: _auditResult!.startsWith('SUCCESS')
-                    ? Colors.green.shade50
-                    : Colors.red.shade50,
-                borderRadius: BorderRadius.circular(12),
+                    ? SariSupplyColors.success.withValues(alpha: 0.1)
+                    : SariSupplyColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(SariSupplyRadii.md),
                 border: Border.all(
                   color: _auditResult!.startsWith('SUCCESS')
-                      ? Colors.green.shade300
-                      : Colors.red.shade300,
+                      ? SariSupplyColors.success.withValues(alpha: 0.5)
+                      : SariSupplyColors.error.withValues(alpha: 0.5),
                 ),
               ),
               child: Text(
                 _auditResult!,
                 style: TextStyle(
                   color: _auditResult!.startsWith('SUCCESS')
-                      ? Colors.green.shade900
-                      : Colors.red.shade900,
+                      ? SariSupplyColors.success
+                      : SariSupplyColors.error,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -429,8 +429,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(SariSupplyRadii.md),
+              side: BorderSide(color: SariSupplyColors.divider),
             ),
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -440,7 +440,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                   Row(
                     children: [
                       const Icon(Icons.cloud_done,
-                          color: Colors.teal, size: 24),
+                          color: SariSupplyColors.orange500, size: 24),
                       const SizedBox(width: 10),
                       Text(
                         'Cloud usage and archive status',
@@ -455,28 +455,28 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                     'Firestore reads',
                     'Usage unavailable',
                     'Live metering is not connected',
-                    Colors.blueGrey.shade700,
+                    SariSupplyColors.ink300,
                   ),
                   const SizedBox(height: 10),
                   _buildQuotaRow(
                     'Firestore writes',
                     'Usage unavailable',
                     'Live metering is not connected',
-                    Colors.blueGrey.shade700,
+                    SariSupplyColors.ink300,
                   ),
                   const SizedBox(height: 10),
                   _buildQuotaRow(
                     'Hosting usage',
                     'Usage unavailable',
                     'Live metering is not connected',
-                    Colors.blue.shade800,
+                    SariSupplyColors.info,
                   ),
                   const SizedBox(height: 10),
                   _buildQuotaRow(
                     'Local Disaster Recovery',
                     'PBKDF2 + AES-256-GCM',
                     'Inspect a supplied archive to verify its integrity',
-                    Colors.indigo.shade800,
+                    SariSupplyColors.info,
                   ),
                 ],
               ),
@@ -501,7 +501,8 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                   style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 13)),
               Text(note,
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                  style:
+                      TextStyle(fontSize: 12, color: SariSupplyColors.ink600)),
             ],
           ),
         ),
@@ -509,7 +510,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: badgeColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: BorderRadius.circular(SariSupplyRadii.sm),
           ),
           child: Text(
             limit,
@@ -576,40 +577,10 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
     required String value,
     required Color color,
     required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                      fontSize: 11, fontWeight: FontWeight.bold, color: color),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.bold, color: color),
-          ),
-        ],
-      ),
-    );
-  }
+  }) =>
+      SsMetricCard(
+        label: title,
+        value: value,
+        trailing: Icon(icon, size: 20, color: SariSupplyColors.ink600),
+      );
 }

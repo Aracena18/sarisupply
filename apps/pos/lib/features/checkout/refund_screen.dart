@@ -406,7 +406,7 @@ class _RefundScreenState extends State<RefundScreen> {
                         ? null
                         : _confirmVoid,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: SariSupplyColors.error,
                   minimumSize: const Size.fromHeight(48),
                 ),
                 icon: const Icon(Icons.delete_forever),

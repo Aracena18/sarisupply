@@ -1,16 +1,21 @@
 name: sarisupply_design_system
 description: Shared Flutter design system for SariSupply applications.
 publish_to: none
-version: 0.1.0
+version: 1.0.0
 
 environment:
-  sdk: ">=3.3.0 <4.0.0"
+  sdk: ">=3.8.0 <4.0.0"
+  flutter: ">=3.32.0"
 
 dependencies:
   flutter:
     sdk: flutter
+  cached_network_image: ^3.4.1
+  flutter_cache_manager: ^3.4.1
+  flutter_svg: ">=2.0.0 <3.0.0"
 
 dev_dependencies:
+  file: ^7.0.1
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
@@ -18,14 +23,13 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/brand/storefront.png
-    - assets/fonts/OFL.txt
+    - assets/brand/
+    - assets/elements/
+    - assets/icons/
   fonts:
-    - family: NunitoSans
+    - family: InstrumentSans
       fonts:
-        - asset: assets/fonts/NunitoSans-400.ttf
-          weight: 400
-        - asset: assets/fonts/NunitoSans-600.ttf
-          weight: 600
-        - asset: assets/fonts/NunitoSans-700.ttf
-          weight: 700
+        - asset: assets/fonts/InstrumentSans.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter.ttf

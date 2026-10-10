@@ -33,7 +33,7 @@ class SariSupplyAdminApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: AppIdentity.adminName,
-      theme: SariSupplyTheme.light(),
+      theme: SariSupplyTheme.light,
       home: AdminAppGate(auth: auth, access: access, reviews: reviews),
     );
   }

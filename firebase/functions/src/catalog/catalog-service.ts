@@ -3,10 +3,12 @@ import { FieldPath, FieldValue, Firestore, Transaction } from 'firebase-admin/fi
 import { HttpsError } from 'firebase-functions/v2/https';
 import { AuthorizationService, AuthRequest, requireHuman } from '../common/authz';
 import { requireDocumentId } from '../common/ids';
+import { ProductImage } from '../media/cloudinary';
+import { commitImageChange, externalImageUrl, imageChangeInput, resolveImageChange } from '../media/product-image-service';
 
 type Input = Record<string, unknown>;
 type Unit = { name: string; factor: number; priceCentavos: number; barcode: string };
-type Product = { id: string; sku: string; name: string; baseUnit: string; active: boolean; units: Unit[]; revision: number };
+type Product = { id: string; sku: string; name: string; baseUnit: string; active: boolean; units: Unit[]; revision: number; imageUrl?: string; image?: ProductImage };
 function text(value: unknown, max: number): string {
   if (typeof value !== 'string' || !value.trim() || value.length > max) throw new HttpsError('invalid-argument', 'Invalid text');
   return value.trim();
@@ -30,7 +32,8 @@ function productInput(value: unknown): Product {
     return { name: text(u.name, 30), factor: integer(u.factor, 1, 1000000), priceCentavos: integer(u.priceCentavos), barcode };
   });
   if (units[0].name !== baseUnit || units[0].factor !== 1 || new Set(units.map(u => u.name.toLowerCase())).size !== units.length || new Set(units.filter(u => u.barcode).map(u => u.barcode)).size !== units.filter(u => u.barcode).length) throw new HttpsError('invalid-argument', 'Invalid unit conversion/barcode');
-  return { id, sku, name: text(p.name, 120), baseUnit, active: p.active, units, revision: 0 };
+  return { id, sku, name: text(p.name, 120), baseUnit, active: p.active, units, revision: 0,
+    ...(p.imageUrl ? { imageUrl: externalImageUrl(p.imageUrl) } : {}) };
 }
 function authz(db: Firestore, tx: Transaction) {
   return new AuthorizationService(async (path) => (await tx.get(db.doc(path))).data() ?? null);
@@ -45,19 +48,26 @@ export async function saveCatalogProduct(db: Firestore, request: AuthRequest, in
   const operationId = requireDocumentId(input.operationId, 'operation ID');
   const expected = integer(input.expectedRevision);
   const p = productInput(input.product);
+  const imageChange = imageChangeInput(input);
   const root = `merchants/${merchantId}`;
   const receipt = db.doc(`${root}/catalogOperations/${operationId}`);
-  const hash = fingerprint({ uid, expected, p });
+  const hash = fingerprint({ uid, expected, p, ...(input.imageChange === undefined ? {} : { imageChange }) });
+  const legacyProduct = { ...p };
+  delete legacyProduct.imageUrl;
+  const legacyHash = fingerprint({ uid, expected, p: legacyProduct });
   return db.runTransaction(async tx => {
     await authz(db, tx).requireOwner(uid, merchantId);
     const replay = await tx.get(receipt);
     if (replay.exists) {
-      if (replay.get('fingerprint') !== hash) throw new HttpsError('already-exists', 'Operation ID has another payload');
+      const legacyReplay = input.imageChange === undefined && replay.get('imageContractVersion') === undefined &&
+        replay.get('fingerprint') === legacyHash;
+      if (replay.get('fingerprint') !== hash && !legacyReplay) throw new HttpsError('already-exists', 'Operation ID has another payload');
       return replay.get('product') as Product;
     }
     const ref = db.doc(`${root}/products/${p.id}`);
     const current = await tx.get(ref);
     const existing = current.data() as Product | undefined;
+    const photo = await resolveImageChange(db, tx, merchantId, p.id, uid, imageChange, existing, p.imageUrl);
     if ((existing?.revision ?? 0) !== expected) throw new HttpsError('failed-precondition', 'Product changed; refresh before editing');
     if (existing && (existing.sku !== p.sku || existing.baseUnit !== p.baseUnit)) throw new HttpsError('failed-precondition', 'SKU and base unit are immutable');
     const metaRef = db.doc(`${root}/inventoryMeta/catalog`);
@@ -75,14 +85,18 @@ export async function saveCatalogProduct(db: Firestore, request: AuthRequest, in
       const reservation = await tx.get(db.doc(`${root}/barcodeRegistry/${barcodeKey(code)}`));
       if (codes.includes(code) && reservation.exists && reservation.get('productId') !== p.id) throw new HttpsError('already-exists', 'Barcode belongs to another product');
     }
-    const saved = { ...p, revision: expected + 1 };
+    const saved: Product = { ...p, revision: expected + 1 };
+    delete saved.imageUrl;
+    if (photo.imageUrl) saved.imageUrl = photo.imageUrl;
+    if (photo.image) saved.image = photo.image;
+    commitImageChange(db, tx, merchantId, p.id, imageChange, existing?.image, saved.image);
     tx.set(ref, saved);
     tx.set(skuRef, { productId: p.id });
     for (const code of oldCodes) if (!codes.includes(code)) tx.delete(db.doc(`${root}/barcodeRegistry/${barcodeKey(code)}`));
     for (const code of codes) tx.set(db.doc(`${root}/barcodeRegistry/${barcodeKey(code)}`), { productId: p.id });
     tx.set(metaRef, { sequence, total: existing ? total : total + 1 });
     tx.create(db.doc(`${root}/catalogChanges/${key(sequence)}`), { sequence, product: saved });
-    tx.create(receipt, { fingerprint: hash, product: saved, actor: uid, recordedAt: FieldValue.serverTimestamp() });
+    tx.create(receipt, { fingerprint: hash, imageContractVersion: 1, product: saved, actor: uid, recordedAt: FieldValue.serverTimestamp() });
     return saved;
   });
 }

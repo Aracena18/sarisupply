@@ -34,6 +34,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   InventoryValuationReport? _valuation;
   EncryptedBackupArchive? _latestBackup;
   String? _verificationResult;
+  bool _verificationPassed = false;
+  bool _creatingBackup = false;
+  bool _verifyingBackup = false;
 
   DateTime _selectedDate = DateTime.now();
   final _backupPasswordController = TextEditingController();
@@ -93,8 +96,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
-              tooltip: 'Refresh Reports',
-              onPressed: _loadAll,
+              tooltip: 'Refresh reports',
+              onPressed: _loading ? null : _loadAll,
             ),
           ],
         ),
@@ -104,54 +107,63 @@ class _ReportsScreenState extends State<ReportsScreen> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 900),
               child: Padding(
-                padding: EdgeInsets.all(
-                    MediaQuery.sizeOf(context).width < 600 ? 16 : 24),
+                padding: EdgeInsets.symmetric(
+                    horizontal:
+                        MediaQuery.sizeOf(context).width < 600 ? 16 : 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 12),
+                      child: Wrap(spacing: 8, runSpacing: 4, children: [
+                        Text(widget.branchName,
+                            style: Theme.of(context).textTheme.titleSmall),
+                        Text('Local records · This device',
+                            style: Theme.of(context).textTheme.bodySmall),
+                      ]),
+                    ),
                     TabBar(
-                      isScrollable: true,
+                      isScrollable:
+                          MediaQuery.textScalerOf(context).scale(14) > 20,
+                      tabAlignment:
+                          MediaQuery.textScalerOf(context).scale(14) > 20
+                              ? TabAlignment.start
+                              : TabAlignment.fill,
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 8),
                       tabs: const [
-                        Tab(
-                            icon: Icon(Icons.point_of_sale),
-                            text: 'Daily Sales'),
-                        Tab(icon: Icon(Icons.assessment), text: 'Valuation'),
-                        Tab(
-                            icon: Icon(Icons.lock_clock),
-                            text: 'Backup & Archival'),
-                        Tab(icon: Icon(Icons.print), text: 'Printer Settings'),
+                        Tab(text: 'Sales'),
+                        Tab(text: 'Stock'),
+                        Tab(text: 'Backup'),
+                        Tab(text: 'Printer'),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    if (_loading)
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(48),
-                          child: CircularProgressIndicator(),
-                        ),
-                      )
-                    else if (_error != null)
-                      SariSupplyStatus(
-                        message: 'Unable to generate reports: $_error',
-                        error: true,
-                        actions: [
-                          TextButton(
-                            onPressed: _loadAll,
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      )
-                    else
-                      Expanded(
-                        child: TabBarView(
-                          children: [
-                            _buildDailySalesTab(),
-                            _buildValuationTab(),
-                            _buildBackupTab(),
-                            _buildPrinterTab(),
-                          ],
-                        ),
-                      ),
+                    Expanded(
+                      child: _loading
+                          ? const Center(child: CircularProgressIndicator())
+                          : _error != null
+                              ? SingleChildScrollView(
+                                  child: SariSupplyStatus(
+                                    message:
+                                        'Unable to generate reports: $_error',
+                                    error: true,
+                                    actions: [
+                                      TextButton(
+                                        onPressed: _loadAll,
+                                        child: const Text('Retry'),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : TabBarView(
+                                  children: [
+                                    _buildDailySalesTab(),
+                                    _buildValuationTab(),
+                                    _buildBackupTab(),
+                                    _buildPrinterTab(),
+                                  ],
+                                ),
+                    ),
                   ],
                 ),
               ),
@@ -163,195 +175,97 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildDailySalesTab() {
-    final s = _salesSummary ??
+    final summary = _salesSummary ??
         DailySalesSummary(
           date: _selectedDate.toIso8601String().split('T').first,
           branchId: widget.store.branchId,
         );
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return _reportScroll('sales', [
+      Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                'Date: ${s.date}',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.calendar_today, size: 16),
-                label: const Text('Change Date'),
-                onPressed: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _selectedDate,
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime.now().add(const Duration(days: 1)),
-                  );
-                  if (picked != null) {
-                    setState(() => _selectedDate = picked);
-                    _loadAll();
-                  }
-                },
-              ),
-            ],
+          Text('Daily sales', style: Theme.of(context).textTheme.titleLarge),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.calendar_today_outlined, size: 18),
+            label: Text(MaterialLocalizations.of(context)
+                .formatCompactDate(_selectedDate)),
+            onPressed: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _selectedDate,
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now().add(const Duration(days: 1)),
+              );
+              if (!mounted || picked == null) return;
+              setState(() => _selectedDate = picked);
+              _loadAll();
+            },
           ),
-          const SizedBox(height: 16),
-          // Metric Cards
-          _metricGroup(
-            children: [
-              _buildMetricCard(
-                title: 'Net Sales',
-                value: _formatPhp(s.netSalesCentavos),
-                color: Colors.green.shade700,
-                icon: Icons.payments,
-              ),
-              _buildMetricCard(
-                title: 'Gross Sales',
-                value: _formatPhp(s.grossSalesCentavos),
-                color: Colors.blue.shade700,
-                icon: Icons.receipt,
-              ),
-              _buildMetricCard(
-                title: 'Transactions',
-                value: '${s.transactionCount}',
-                color: Colors.purple.shade700,
-                icon: Icons.shopping_bag,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _metricGroup(
-            children: [
-              _buildMetricCard(
-                title: 'Refunds / Returns',
-                value: '-${_formatPhp(s.refundsCentavos)}',
-                color: Colors.amber.shade900,
-                icon: Icons.assignment_return,
-              ),
-              _buildMetricCard(
-                title: 'Voided Sales',
-                value: '-${_formatPhp(s.voidsCentavos)}',
-                color: Colors.red.shade700,
-                icon: Icons.cancel,
-              ),
-              _buildMetricCard(
-                title: 'Discounts',
-                value: '-${_formatPhp(s.discountsCentavos)}',
-                color: Colors.indigo.shade700,
-                icon: Icons.local_offer,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          // Tender breakdown card
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Payment Methods / Tenders',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const Divider(height: 20),
-                  _buildRow('Cash Sales', _formatPhp(s.tenders.cashCentavos)),
-                  _buildRow('QR / Digital Payments',
-                      _formatPhp(s.tenders.qrCentavos)),
-                  _buildRow('Store Credit (Utang)',
-                      _formatPhp(s.tenders.creditCentavos)),
-                  const Divider(),
-                  _buildRow(
-                    'Total Collected',
-                    _formatPhp(s.tenders.totalCentavos),
-                    bold: true,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Cash drawer card
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Cash Drawer Activity',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const Divider(height: 20),
-                  _buildRow(
-                      'Opening Float', _formatPhp(s.openingFloatCentavos)),
-                  _buildRow('Cash In (+)', _formatPhp(s.cashInCentavos)),
-                  _buildRow(
-                      'Cash Out (-)', '-${_formatPhp(s.cashOutCentavos)}'),
-                  _buildRow(
-                    'Expected Cash in Drawer',
-                    _formatPhp(s.expectedCashCentavos),
-                    bold: true,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Action buttons
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.file_download),
-                  label: const Text('Export CSV'),
-                  onPressed: () {
-                    final csv = BackupArchiveService.exportSalesCsv([s]);
-                    Clipboard.setData(ClipboardData(text: csv));
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Sales CSV copied to clipboard (Ready for Excel/Sheets)'),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FilledButton.icon(
-                  icon: const Icon(Icons.receipt_long),
-                  label: const Text('Z-Reading Preview'),
-                  onPressed: () => _showZReadingPreview(s),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
         ],
       ),
-    );
+      const SizedBox(height: 16),
+      _valueCard('Net sales', _formatPhp(summary.netSalesCentavos), details: [
+        _buildRow('Transactions', '${summary.transactionCount}'),
+      ]),
+      _scopeNotice(
+        title: 'Sales from this device only',
+        message:
+            'Sales saved here for ${widget.branchName} on ${summary.date}. '
+            'Other devices and activity that has not synced may be missing.',
+      ),
+      _actions([
+        FilledButton.icon(
+          icon: const Icon(Icons.receipt_long_outlined),
+          label: const Text('Preview daily report'),
+          onPressed: () => _showZReadingPreview(summary),
+        ),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.copy_outlined),
+          label: const Text('Copy sales CSV'),
+          onPressed: () => _copyText(
+              BackupArchiveService.exportSalesCsv([summary]),
+              'Sales CSV copied to clipboard'),
+        ),
+      ]),
+      const SizedBox(height: 24),
+      _sectionCard('Sales breakdown', [
+        _buildRow('Gross sales', _formatPhp(summary.grossSalesCentavos)),
+        _buildRow('Discounts', _deduction(summary.discountsCentavos)),
+        _buildRow('Refunds / returns', _deduction(summary.refundsCentavos)),
+        _buildRow('Voided sales', _deduction(summary.voidsCentavos)),
+        const Divider(height: 24),
+        _buildRow('Net sales', _formatPhp(summary.netSalesCentavos),
+            bold: true),
+      ]),
+      const SizedBox(height: 16),
+      _sectionCard('Payment methods', [
+        _buildRow('Cash', _formatPhp(summary.tenders.cashCentavos)),
+        _buildRow('QR / digital', _formatPhp(summary.tenders.qrCentavos)),
+        _buildRow(
+            'Store credit (utang)', _formatPhp(summary.tenders.creditCentavos)),
+        if (summary.tenders.otherCentavos != 0)
+          _buildRow('Other', _formatPhp(summary.tenders.otherCentavos)),
+        const Divider(height: 24),
+        _buildRow('Total by payment method',
+            _formatPhp(summary.tenders.totalCentavos),
+            bold: true),
+        Text('Includes store credit; this is not all cash collected.',
+            style: Theme.of(context).textTheme.bodySmall),
+      ]),
+      const SizedBox(height: 16),
+      _sectionCard('Cash drawer', [
+        _buildRow('Opening float', _formatPhp(summary.openingFloatCentavos)),
+        _buildRow('Cash in', _formatPhp(summary.cashInCentavos)),
+        _buildRow('Cash out', _deduction(summary.cashOutCentavos)),
+        const Divider(height: 24),
+        _buildRow('Expected cash', _formatPhp(summary.expectedCashCentavos),
+            bold: true),
+        Text('Expected balance, not a physical cash count.',
+            style: Theme.of(context).textTheme.bodySmall),
+      ]),
+    ]);
   }
 
   void _showZReadingPreview(DailySalesSummary s) {
@@ -390,488 +304,353 @@ class _ReportsScreenState extends State<ReportsScreen> {
       context: context,
       builder: (_) => ReceiptPreviewDialog(
         document: doc,
-        title: 'Shift report Document',
+        title: 'Daily report preview',
+        notice:
+            'Daily totals preview. Shift identity and counted-cash details are placeholders; this is not a recorded shift close.',
       ),
     );
   }
 
   Widget _buildValuationTab() {
-    final val = _valuation;
-    if (val == null) return const SizedBox.shrink();
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SariSupplyStatus(
-              message:
-                  'Local stock including pending movements. Purchase cost and profit are unavailable until branch cost records are connected.'),
-          const SizedBox(height: 12),
-
-          _metricGroup(
-            children: [
-              _buildMetricCard(
-                title: 'Retail Inventory Value',
-                value: _formatPhp(val.totalRetailValueCentavos),
-                color: Colors.teal.shade700,
-                icon: Icons.storefront,
-              ),
-              _buildMetricCard(
-                title: 'Total Cost Value',
-                value: (val.totalCostValueCentavos == null
+    final valuation = _valuation;
+    if (valuation == null) {
+      return const SariSupplyStatus(
+          message: 'Stock value is unavailable. Refresh to try again.');
+    }
+    final movements = valuation.movementSummary;
+    return _reportScroll('valuation', [
+      Text('Inventory value', style: Theme.of(context).textTheme.titleLarge),
+      const SizedBox(height: 16),
+      _valueCard(
+          'Retail stock value', _formatPhp(valuation.totalRetailValueCentavos),
+          details: [
+            _buildRow(
+                'Purchase cost',
+                valuation.totalCostValueCentavos == null
                     ? 'Unavailable'
-                    : _formatPhp(val.totalCostValueCentavos!)),
-                color: Colors.blueGrey.shade700,
-                icon: Icons.inventory_2,
-              ),
-              _buildMetricCard(
-                title: 'Potential Profit',
-                value: (val.totalPotentialProfitCentavos == null
+                    : _formatPhp(valuation.totalCostValueCentavos!)),
+            _buildRow(
+                'Potential profit',
+                valuation.totalPotentialProfitCentavos == null
                     ? 'Unavailable'
-                    : _formatPhp(val.totalPotentialProfitCentavos!)),
-                color: Colors.green.shade800,
-                icon: Icons.trending_up,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _metricGroup(
-            children: [
-              _buildMetricCard(
-                title: 'Active SKUs',
-                value: '${val.totalSkus}',
-                color: Colors.indigo.shade700,
-                icon: Icons.category,
-              ),
-              _buildMetricCard(
-                title: 'Low Stock (< 10)',
-                value: '${val.lowStockCount}',
-                color: Colors.amber.shade900,
-                icon: Icons.warning_amber,
-              ),
-              _buildMetricCard(
-                title: 'Out of Stock',
-                value: '${val.outOfStockCount}',
-                color: Colors.red.shade700,
-                icon: Icons.remove_shopping_cart,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          // Stock movements card
-          if (val.movementSummary != null) ...[
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.grey.shade300),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Aggregated Stock Movements',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const Divider(height: 20),
-                    _buildRow('Received from POs (+)',
-                        '${val.movementSummary!.receivedQuantity} units'),
-                    _buildRow('Sold to Customers (-)',
-                        '${val.movementSummary!.soldQuantity} units'),
-                    _buildRow('Customer Returns (+)',
-                        '${val.movementSummary!.returnedCustomerQuantity} units'),
-                    _buildRow('Transfers Dispatched (-)',
-                        '${val.movementSummary!.transferredOutQuantity} units'),
-                    _buildRow('Transfers Received (+)',
-                        '${val.movementSummary!.transferredInQuantity} units'),
-                    _buildRow('Adjustments & Counts',
-                        '${val.movementSummary!.adjustedQuantity} units'),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          // Valuation Item List
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Text(
-                'Product Valuation Table (${val.products.length})',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              TextButton.icon(
-                icon: const Icon(Icons.file_download, size: 16),
-                label: const Text('Export Valuation CSV'),
-                onPressed: () {
-                  final csv = BackupArchiveService.exportInventoryCsv(val);
-                  Clipboard.setData(ClipboardData(text: csv));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Valuation CSV copied to clipboard'),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: val.products.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, i) {
-              final p = val.products[i];
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(p.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text(
-                        'SKU: ${p.sku} · Qty: ${p.physicalQuantity} ${p.unitName}'),
-                    Text(
-                        'Retail value: ${_formatPhp(p.totalRetailValueCentavos)}'),
-                    Text(
-                        'Cost: ${p.totalCostValueCentavos == null ? 'Unavailable' : _formatPhp(p.totalCostValueCentavos!)}'),
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 24),
-        ],
+                    : _formatPhp(valuation.totalPotentialProfitCentavos!)),
+          ]),
+      _scopeNotice(
+        title: 'Local stock · Includes pending movements',
+        message: 'Saved stock for ${widget.branchName}, generated '
+            '${MaterialLocalizations.of(context).formatMediumDate(valuation.generatedAt)} '
+            'at ${MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(valuation.generatedAt))}. '
+            'Retail value uses selling prices. Purchase cost and profit are '
+            'unavailable until branch cost records are connected.',
       ),
-    );
-  }
-
-  Widget _buildBackupTab() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.shield, color: Colors.indigo, size: 28),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Local Encrypted Database Backup',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                            Text(
-                              'AES-256-GCM encryption with PBKDF2 key derivation and tamper-evident SHA-256 hash manifest.',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey.shade600),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 28),
-                  TextField(
-                    controller: _backupPasswordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Archive Encryption Passphrase',
-                      helperText:
-                          'Minimum 6 characters. Required to decrypt backup.',
-                      prefixIcon: Icon(Icons.password),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    icon: const Icon(Icons.archive),
-                    label: const Text('Export Encrypted Backup Now'),
-                    onPressed: () async {
-                      try {
-                        final archive = await widget.store.exportBackupArchive(
-                          password: _backupPasswordController.text,
-                        );
-                        setState(() {
-                          _latestBackup = archive;
-                          _verificationResult = null;
-                        });
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Encrypted archive generated: ${archive.manifest.recordCount} records',
-                              ),
-                              backgroundColor: Colors.green.shade800,
-                            ),
-                          );
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Backup failed: $e')),
-                          );
-                        }
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (_latestBackup != null) ...[
-            Card(
-              color: Colors.blue.shade50,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(color: Colors.blue.shade200),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Tamper-Evident Archive Manifest',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade900,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    _buildRow(
-                        'Records:', '${_latestBackup!.manifest.recordCount}'),
-                    _buildRow('Created At:', _latestBackup!.manifest.createdAt),
-                    _buildRow(
-                      'SHA-256:',
-                      '${_latestBackup!.manifest.sha256Hash.substring(0, 16)}…',
-                    ),
-                    const Divider(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            icon: const Icon(Icons.copy, size: 16),
-                            label: const Text('Copy JSON'),
-                            onPressed: () {
-                              Clipboard.setData(
-                                ClipboardData(
-                                  text: jsonEncode(_latestBackup!.toMap()),
-                                ),
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content:
-                                      Text('Archive JSON copied to clipboard'),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton.icon(
-                            icon: const Icon(Icons.verified_user, size: 16),
-                            label: const Text('Test Verification'),
-                            onPressed: () async {
-                              try {
-                                final res = await BackupArchiveService
-                                    .verifyBackupArchive(
-                                  archive: _latestBackup!,
-                                  password: _backupPasswordController.text,
-                                );
-                                setState(() {
-                                  _verificationResult =
-                                      'VERIFIED OK: Decrypted ${res['sales']?.length ?? 0} sales. SHA-256 matched!';
-                                });
-                              } catch (e) {
-                                setState(() {
-                                  _verificationResult = 'FAILED: $e';
-                                });
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_verificationResult != null) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: _verificationResult!.startsWith('VERIFIED')
-                              ? Colors.green.shade100
-                              : Colors.red.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _verificationResult!,
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            color: _verificationResult!.startsWith('VERIFIED')
-                                ? Colors.green.shade900
-                                : Colors.red.shade900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          // Retention notice
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.amber.shade50,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.amber.shade300),
-            ),
-            child: Row(
+      OutlinedButton.icon(
+        icon: const Icon(Icons.copy_outlined),
+        label: const Text('Copy stock CSV'),
+        onPressed: () => _copyText(
+            BackupArchiveService.exportInventoryCsv(valuation),
+            'Stock CSV copied to clipboard'),
+      ),
+      const SizedBox(height: 24),
+      _sectionCard('Stock status', [
+        _buildRow('Products', '${valuation.totalSkus}'),
+        _buildRow('Low stock · 1–10 base units', '${valuation.lowStockCount}',
+            valueColor:
+                valuation.lowStockCount > 0 ? SariSupplyColors.warning : null),
+        _buildRow('Out of stock', '${valuation.outOfStockCount}',
+            valueColor:
+                valuation.outOfStockCount > 0 ? SariSupplyColors.error : null),
+      ]),
+      if (movements != null) ...[
+        const SizedBox(height: 16),
+        SsCard(
+          padding: EdgeInsets.zero,
+          child: Material(
+            color: Colors.transparent,
+            child: ExpansionTile(
+              key: const PageStorageKey('stock-movements'),
+              title: const Text('Stock movements'),
+              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              shape: const Border(),
+              collapsedShape: const Border(),
               children: [
-                Icon(Icons.info_outline, color: Colors.amber.shade900),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Keep two verified owner-controlled backup copies. Business records are not automatically deleted.',
-                    style:
-                        TextStyle(fontSize: 12, color: Colors.amber.shade900),
-                  ),
-                ),
+                _buildRow('Received', '${movements.receivedQuantity} units'),
+                _buildRow('Sold', '${movements.soldQuantity} units'),
+                _buildRow('Customer returns',
+                    '${movements.returnedCustomerQuantity} units'),
+                _buildRow('Transfers out',
+                    '${movements.transferredOutQuantity} units'),
+                _buildRow(
+                    'Transfers in', '${movements.transferredInQuantity} units'),
+                _buildRow('Adjustments / counts',
+                    '${movements.adjustedQuantity} units'),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.health_and_safety_outlined),
-            label: const Text('Open System Diagnostics & Recovery'),
-            onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute<void>(
-                builder: (_) => DiagnosticRecoveryScreen(
-                  store: widget.store,
-                ),
-              ));
-            },
-          ),
-          const SizedBox(height: 24),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrinterTab() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
+        ),
+      ],
+      const SizedBox(height: 24),
+      Text('Products · ${valuation.products.length}',
+          style: Theme.of(context).textTheme.titleLarge),
+      const SizedBox(height: 12),
+      if (valuation.products.isEmpty)
+        const SsCard(child: Text('No products in this device’s saved catalog.'))
+      else
+        ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: valuation.products.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final product = valuation.products[index];
+            return SsCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Thermal Printer Settings (ESC/POS)',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Direct ESC/POS command generation for Bluetooth and USB receipt printers. Zero cloud print service fees.',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                  ),
-                  const Divider(height: 28),
-                  Text(
-                    'Paper Roll Width',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  SegmentedButton<EscPosPaperSize>(
-                    segments: const [
-                      ButtonSegment(
-                        value: EscPosPaperSize.mm58,
-                        label: Text('58mm (32 Columns)'),
-                        icon: Icon(Icons.receipt),
-                      ),
-                      ButtonSegment(
-                        value: EscPosPaperSize.mm80,
-                        label: Text('80mm (42 Columns)'),
-                        icon: Icon(Icons.receipt_long),
-                      ),
-                    ],
-                    selected: {_printerPaperSize},
-                    onSelectionChanged: (val) {
-                      setState(() => _printerPaperSize = val.first);
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          icon: const Icon(Icons.meeting_room),
-                          label: const Text('Cash Drawer Kick'),
-                          onPressed: null,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton.icon(
-                          icon: const Icon(Icons.print),
-                          label: const Text('Preview Test Receipt'),
-                          onPressed: _showTestReceiptPreview,
-                        ),
-                      ),
-                    ],
-                  ),
+                  Text(product.name,
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 4),
+                  Text(product.sku,
+                      style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 12),
+                  _buildRow('Stock',
+                      '${product.physicalQuantity} ${product.unitName}'),
+                  _buildRow('Retail value',
+                      _formatPhp(product.totalRetailValueCentavos),
+                      bold: true),
+                  _buildRow(
+                      'Purchase cost',
+                      product.totalCostValueCentavos == null
+                          ? 'Unavailable'
+                          : _formatPhp(product.totalCostValueCentavos!)),
                 ],
               ),
-            ),
+            );
+          },
+        ),
+    ]);
+  }
+
+  Widget _buildBackupTab() {
+    final archive = _latestBackup;
+    final busy = _creatingBackup || _verifyingBackup;
+    return _reportScroll('backup', [
+      Text('Backup & archival', style: Theme.of(context).textTheme.titleLarge),
+      const SizedBox(height: 8),
+      Text('Create a password-protected copy of this branch’s local records.',
+          style: Theme.of(context).textTheme.bodyMedium),
+      const SizedBox(height: 16),
+      _sectionCard('1. Create a backup', [
+        Text(
+            'Keep the password safe. You will need it to verify or restore the backup.',
+            style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _backupPasswordController,
+          obscureText: true,
+          enabled: !busy,
+          autocorrect: false,
+          enableSuggestions: false,
+          decoration: const InputDecoration(
+            labelText: 'Backup password',
+            helperText: 'At least 6 characters',
+            helperMaxLines: 2,
+            prefixIcon: Icon(Icons.lock_outline),
           ),
-          const SizedBox(height: 24),
-        ],
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          icon: const Icon(Icons.archive_outlined),
+          label: Text(
+              _creatingBackup ? 'Creating backup…' : 'Create encrypted backup'),
+          onPressed: busy ? null : _createBackup,
+        ),
+        const SizedBox(height: 12),
+        Text(
+            'Creation does not save a file. Copy the generated backup below and save it somewhere you control.',
+            style: Theme.of(context).textTheme.bodySmall),
+      ]),
+      if (archive != null) ...[
+        const SizedBox(height: 16),
+        _sectionCard('2. Copy & verify', [
+          _buildRow('Records', '${archive.manifest.recordCount}'),
+          _buildRow('Created', archive.manifest.createdAt),
+          const SizedBox(height: 12),
+          _actions([
+            FilledButton.icon(
+              icon: const Icon(Icons.copy_outlined),
+              label: const Text('Copy backup JSON'),
+              onPressed: busy
+                  ? null
+                  : () => _copyText(jsonEncode(archive.toMap()),
+                      'Encrypted backup JSON copied to clipboard'),
+            ),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.verified_user_outlined),
+              label: Text(_verifyingBackup ? 'Verifying…' : 'Verify backup'),
+              onPressed: busy ? null : _verifyBackup,
+            ),
+          ]),
+          if (_verificationResult != null) ...[
+            const SizedBox(height: 12),
+            SariSupplyStatus(
+              message: _verificationResult!,
+              error: !_verificationPassed,
+              icon: _verificationPassed
+                  ? Icons.check_circle_outline
+                  : Icons.error_outline,
+            ),
+          ],
+          ExpansionTile(
+            key: const PageStorageKey('backup-details'),
+            title: Text('Backup details',
+                style: Theme.of(context).textTheme.bodyMedium),
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: 8),
+            shape: const Border(),
+            collapsedShape: const Border(),
+            children: [
+              _buildRow('SHA-256',
+                  '${archive.manifest.sha256Hash.substring(0, 16)}…'),
+              Text(
+                  'Encrypted with AES-256-GCM. Verification checks the password and archive integrity.',
+                  style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        ]),
+      ],
+      const SizedBox(height: 24),
+      _sectionCard('Keep your records safe', [
+        Text(
+            'Keep two verified backup copies in places you control. '
+            'Business records are not automatically deleted.',
+            style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 12),
+        Text(
+            'The generated copy stays here only while this page is open. '
+            'Verification here does not confirm that an external copy was saved.',
+            style: Theme.of(context).textTheme.bodySmall),
+      ]),
+      const SizedBox(height: 16),
+      OutlinedButton.icon(
+        icon: const Icon(Icons.health_and_safety_outlined),
+        label: const Text('Open diagnostics & recovery'),
+        onPressed: busy
+            ? null
+            : () {
+                Navigator.of(context).push(MaterialPageRoute<void>(
+                  builder: (_) => DiagnosticRecoveryScreen(store: widget.store),
+                ));
+              },
       ),
-    );
+    ]);
+  }
+
+  Future<void> _createBackup() async {
+    if (_creatingBackup || _verifyingBackup) return;
+    setState(() => _creatingBackup = true);
+    try {
+      final archive = await widget.store.exportBackupArchive(
+        password: _backupPasswordController.text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _latestBackup = archive;
+        _verificationResult = null;
+        _verificationPassed = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+            'Backup created · ${archive.manifest.recordCount} records. Copy it to save it.'),
+      ));
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Backup could not be created: $error')));
+      }
+    } finally {
+      if (mounted) setState(() => _creatingBackup = false);
+    }
+  }
+
+  Future<void> _verifyBackup() async {
+    if (_creatingBackup || _verifyingBackup) return;
+    final archive = _latestBackup;
+    if (archive == null) return;
+    setState(() {
+      _verifyingBackup = true;
+      _verificationResult = null;
+    });
+    try {
+      await BackupArchiveService.verifyBackupArchive(
+        archive: archive,
+        password: _backupPasswordController.text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _verificationPassed = true;
+        _verificationResult =
+            'Backup verified. Password and integrity checks passed.';
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _verificationPassed = false;
+          _verificationResult =
+              'Backup could not be verified. Check the password and try again.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _verifyingBackup = false);
+    }
+  }
+
+  Widget _buildPrinterTab() {
+    return _reportScroll('printer', [
+      Text('Receipt layout', style: Theme.of(context).textTheme.titleLarge),
+      const SizedBox(height: 8),
+      Text('Choose a paper width for receipt previews.',
+          style: Theme.of(context).textTheme.bodyMedium),
+      const SizedBox(height: 16),
+      _sectionCard('Paper width', [
+        RadioGroup<EscPosPaperSize>(
+          groupValue: _printerPaperSize,
+          onChanged: (value) {
+            if (value != null) setState(() => _printerPaperSize = value);
+          },
+          child: Column(children: const [
+            RadioListTile<EscPosPaperSize>(
+              contentPadding: EdgeInsets.zero,
+              value: EscPosPaperSize.mm58,
+              title: Text('58 mm'),
+              subtitle: Text('32 characters per line'),
+            ),
+            Divider(height: 1),
+            RadioListTile<EscPosPaperSize>(
+              contentPadding: EdgeInsets.zero,
+              value: EscPosPaperSize.mm80,
+              title: Text('80 mm'),
+              subtitle: Text('42 characters per line'),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          icon: const Icon(Icons.receipt_long_outlined),
+          label: const Text('Preview test receipt'),
+          onPressed: _showTestReceiptPreview,
+        ),
+      ]),
+      const SizedBox(height: 16),
+      _sectionCard('Printer connection', [
+        Text(
+            'Printing and cash drawer control are unavailable in this app. '
+            'Previewing a receipt does not send it to a printer.',
+            style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 8),
+        Text('Paper width applies to this page’s previews while it is open.',
+            style: Theme.of(context).textTheme.bodySmall),
+      ]),
+    ]);
   }
 
   void _showTestReceiptPreview() {
@@ -904,88 +683,153 @@ class _ReportsScreenState extends State<ReportsScreen> {
       amountReceivedCentavos: 5000,
       changeCentavos: 1000,
       paperSize: _printerPaperSize,
-      footerNote: 'TEST RECEIPT PRINT\nThermal Printer OK',
+      footerNote: 'SAMPLE RECEIPT\nPreview only - not printed',
     );
 
     showDialog<void>(
       context: context,
       builder: (_) => ReceiptPreviewDialog(
         document: doc,
-        title: 'Thermal Printer Test',
+        title: 'Test receipt preview',
+        notice:
+            'Sample products and payments. No sale is recorded and nothing is printed.',
       ),
     );
   }
 
-  Widget _metricGroup({required List<Widget> children}) => LayoutBuilder(
+  String _deduction(int centavos) =>
+      centavos == 0 ? _formatPhp(0) : '-${_formatPhp(centavos)}';
+
+  Future<void> _copyText(String text, String message) async {
+    try {
+      await Clipboard.setData(ClipboardData(text: text));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not copy. Try again.')));
+      }
+    }
+  }
+
+  Widget _reportScroll(String key, List<Widget> children) =>
+      SingleChildScrollView(
+        key: PageStorageKey(key),
+        padding: const EdgeInsets.only(bottom: 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      );
+
+  Widget _valueCard(String label, String value,
+          {List<Widget> details = const []}) =>
+      SsCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(label,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: SariSupplyColors.ink600)),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Text(value,
+                  softWrap: false, style: SariSupplyTypography.moneyLarge),
+            ),
+            if (details.isNotEmpty) ...[
+              const Divider(height: 32),
+              ...details,
+            ],
+          ],
+        ),
+      );
+
+  Widget _sectionCard(String title, List<Widget> children) => SsCard(
+        child: Material(
+          color: Colors.transparent,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(title, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 12),
+              ...children,
+            ],
+          ),
+        ),
+      );
+
+  Widget _scopeNotice({required String title, required String message}) =>
+      ExpansionTile(
+        key: PageStorageKey('scope-$title'),
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(bottom: 16),
+        shape: const Border(),
+        collapsedShape: const Border(),
+        leading: const Icon(Icons.info_outline, size: 20),
+        title: Text(title, style: Theme.of(context).textTheme.bodySmall),
+        children: [
+          Text(message, style: Theme.of(context).textTheme.bodyMedium)
+        ],
+      );
+
+  Widget _actions(List<Widget> actions) => LayoutBuilder(
         builder: (context, constraints) {
-          final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
-          final columns = scale > 1.5 || constraints.maxWidth < 600
-              ? 1
-              : constraints.maxWidth < 900
-                  ? 2
-                  : 3;
-          final width = (constraints.maxWidth - 12 * (columns - 1)) / columns;
-          return Wrap(spacing: 12, runSpacing: 12, children: [
-            for (final child in children) SizedBox(width: width, child: child),
+          if (constraints.maxWidth < 600 ||
+              MediaQuery.textScalerOf(context).scale(14) > 20) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < actions.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 8),
+                  actions[i],
+                ],
+              ],
+            );
+          }
+          return Row(children: [
+            for (var i = 0; i < actions.length; i++) ...[
+              if (i > 0) const SizedBox(width: 12),
+              Expanded(child: actions[i]),
+            ],
           ]);
         },
       );
 
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
-    required Color color,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: color),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRow(String label, String value, {bool bold = false}) {
-    final style = TextStyle(
-        fontWeight: bold ? FontWeight.bold : FontWeight.normal, fontSize: 14);
+  Widget _buildRow(String label, String value,
+      {bool bold = false, Color? valueColor}) {
+    final style = Theme.of(context)
+        .textTheme
+        .bodyMedium
+        ?.copyWith(fontWeight: bold ? FontWeight.w600 : FontWeight.w400);
+    final labelText = Text(label, style: style);
+    final valueText = Text(value, style: style?.copyWith(color: valueColor));
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Wrap(spacing: 12, runSpacing: 4, children: [
-        Text(label, style: style),
-        Text(value, style: style),
-      ]),
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: LayoutBuilder(builder: (context, constraints) {
+        if (constraints.maxWidth < 280 ||
+            MediaQuery.textScalerOf(context).scale(14) > 20) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [labelText, const SizedBox(height: 4), valueText],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: labelText),
+            const SizedBox(width: 16),
+            Flexible(
+                child:
+                    Align(alignment: Alignment.centerRight, child: valueText)),
+          ],
+        );
+      }),
     );
   }
 }

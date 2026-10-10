@@ -295,9 +295,7 @@ class _AdjustmentScreenState extends State<AdjustmentScreen> {
                     'Stock will change: $currentQty → $projectedQty ${_selectedRow!.product.baseUnit}',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: projectedQty < 0
-                          ? Theme.of(context).colorScheme.error
-                          : null,
+                      color: projectedQty < 0 ? SariSupplyColors.error : null,
                     ),
                   ),
                 ],

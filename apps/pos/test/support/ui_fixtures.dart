@@ -7,12 +7,14 @@ import 'package:sarisupply_design_system/sarisupply_design_system.dart';
 import 'package:sarisupply_models/sarisupply_models.dart';
 
 Future<void> loadUiFonts() async {
-  final loader = FontLoader('packages/sarisupply_design_system/NunitoSans');
-  for (final w in [400, 600, 700]) {
-    loader.addFont(rootBundle.load(
-        'packages/sarisupply_design_system/assets/fonts/NunitoSans-$w.ttf'));
-  }
+  final loader = FontLoader(SariSupplyTypography.fontFamily)
+    ..addFont(rootBundle.load(
+        'packages/sarisupply_design_system/assets/fonts/InstrumentSans.ttf'));
   await loader.load();
+  final fallback = FontLoader(SariSupplyTypography.fallback.first)
+    ..addFont(rootBundle
+        .load('packages/sarisupply_design_system/assets/fonts/Inter.ttf'));
+  await fallback.load();
   final icons = FontLoader('MaterialIcons')
     ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));
   await icons.load();
@@ -21,7 +23,7 @@ Future<void> loadUiFonts() async {
 Widget fixtureApp(Widget screen, {double scale = 1, double keyboard = 0}) =>
     MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: SariSupplyTheme.light(),
+      theme: SariSupplyTheme.light,
       builder: (context, child) => MediaQuery(
           data: MediaQuery.of(context).copyWith(
               textScaler: TextScaler.linear(scale),

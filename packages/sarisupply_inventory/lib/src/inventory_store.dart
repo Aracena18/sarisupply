@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:convert';
 import 'dart:math';
 import 'package:crypto/crypto.dart';
@@ -29,7 +30,7 @@ final class InventoryStore {
       {required String merchantId, required String branchId}) async {
     final db = await factory.openDatabase(path,
         options: OpenDatabaseOptions(
-            version: 10,
+            version: 11,
             singleInstance: false,
             onConfigure: (db) async {
               await db.execute('PRAGMA foreign_keys = ON');
@@ -46,6 +47,7 @@ final class InventoryStore {
               await _v8(db);
               await _v9(db);
               await _v10(db);
+              await _v11(db);
             },
             onUpgrade: (db, oldVersion, newVersion) async {
               if (oldVersion < 2) await _v2(db);
@@ -57,6 +59,7 @@ final class InventoryStore {
               if (oldVersion < 8) await _v8(db);
               if (oldVersion < 9) await _v9(db);
               if (oldVersion < 10) await _v10(db);
+              if (oldVersion < 11) await _v11(db);
             }));
     try {
       await db.transaction((tx) async {
@@ -341,6 +344,33 @@ final class InventoryStore {
   static Future<void> _v10(DatabaseExecutor db) async {
     await db.execute(
         'CREATE TABLE IF NOT EXISTS procurement_outbox(id TEXT PRIMARY KEY,command TEXT NOT NULL,payload TEXT NOT NULL,status TEXT NOT NULL,message TEXT)');
+  }
+
+  static Future<void> _v11(DatabaseExecutor db) async {
+    // Assigned delivery items carry their own product snapshots. A Rider does
+    // not download the store's retail catalog. Retain stop ownership and all
+    // existing quantities while removing the unrelated catalog dependency.
+    await db.execute('''
+      CREATE TABLE delivery_stop_items_v11 (
+        id TEXT PRIMARY KEY,
+        stop_id TEXT NOT NULL REFERENCES delivery_stops(id),
+        product_id TEXT NOT NULL,
+        quantity_ordered INTEGER NOT NULL,
+        quantity_delivered INTEGER NOT NULL,
+        quantity_returned INTEGER NOT NULL,
+        return_reason TEXT
+      )
+    ''');
+    await db.execute('''
+      INSERT INTO delivery_stop_items_v11
+      SELECT id, stop_id, product_id, quantity_ordered, quantity_delivered,
+             quantity_returned, return_reason FROM delivery_stop_items
+    ''');
+    await db.execute('DROP TABLE delivery_stop_items');
+    await db.execute(
+        'ALTER TABLE delivery_stop_items_v11 RENAME TO delivery_stop_items');
+    await db.execute(
+        'CREATE INDEX stop_items_stop ON delivery_stop_items(stop_id)');
   }
 
   Future<void> _queueProcurement(
@@ -706,16 +736,26 @@ final class InventoryStore {
   static CatalogProduct _product(Object? body) => CatalogProduct.fromMap(
       Map<String, Object?>.from(jsonDecode(body as String) as Map));
   Future<List<InventoryRow>> search(String query,
-      {bool shortagesOnly = false, bool includeArchived = false}) async {
-    final cursor = await stockCursor();
-    final escaped = query
-        .trim()
-        .replaceAll('\\', '\\\\')
-        .replaceAll('%', '\\%')
-        .replaceAll('_', '\\_');
-    final saleUnsettled =
-        "(o.status IN ('pending','conflict','blocked') OR (o.status='accepted' AND o.sequence>$cursor))";
-    final rows = await _db.rawQuery("""SELECT p.body,
+      {bool shortagesOnly = false,
+      bool includeArchived = false,
+      int? lowStockThreshold,
+      int offset = 0,
+      int limit = 50}) async {
+    final trace = TimelineTask()..start('inventory.search');
+    try {
+      if (offset < 0 || limit < 1 || limit > 100) {
+        throw ArgumentError('Invalid inventory page');
+      }
+      final cursor = await stockCursor();
+      final escaped = query
+          .trim()
+          .replaceAll('\\', '\\\\')
+          .replaceAll('%', '\\%')
+          .replaceAll('_', '\\_');
+      final saleUnsettled =
+          "(o.status IN ('pending','conflict','blocked') OR (o.status='accepted' AND o.sequence>$cursor))";
+      final rows = await _db.rawQuery(
+          """SELECT p.body,
         COALESCE(lc.quantity,COALESCE(s.quantity,0)) + COALESCE((SELECT SUM(ss.delta) FROM sale_stock ss JOIN checkout_outbox o ON o.id=ss.sale JOIN local_order so ON so.id=ss.sale WHERE ss.product=p.id AND ((co.ordinal IS NOT NULL AND so.ordinal>co.ordinal) OR (co.ordinal IS NULL AND $saleUnsettled))),0) + COALESCE((SELECT SUM(rs.delta) FROM refund_stock rs JOIN checkout_outbox o ON o.id=rs.refund JOIN local_order so ON so.id=rs.refund WHERE rs.product=p.id AND ((co.ordinal IS NOT NULL AND so.ordinal>co.ordinal) OR (co.ordinal IS NULL AND $saleUnsettled))),0) + COALESCE((SELECT SUM(l.delta) FROM ledger l JOIN outbox o ON o.id=l.id JOIN local_order lo ON lo.id=l.id WHERE l.product=p.id AND json_extract(l.body,'\$.projectionVersion')=2 AND ((co.ordinal IS NOT NULL AND lo.ordinal>co.ordinal) OR (co.ordinal IS NULL AND $saleUnsettled))),0) AS local_quantity,
         COALESCE(s.revision,0) AS revision,
         (SELECT COUNT(*) FROM ledger l JOIN outbox o ON o.id=l.id WHERE l.product=p.id AND $saleUnsettled)+(SELECT COUNT(*) FROM sale_stock ss JOIN checkout_outbox o ON o.id=ss.sale WHERE ss.product=p.id AND $saleUnsettled)+(SELECT COUNT(*) FROM refund_stock rs JOIN checkout_outbox o ON o.id=rs.refund WHERE rs.product=p.id AND $saleUnsettled) AS unsettled
@@ -723,16 +763,29 @@ final class InventoryStore {
         LEFT JOIN ledger lc ON lc.id=(SELECT l.id FROM ledger l JOIN outbox o ON o.id=l.id JOIN local_order lo ON lo.id=l.id WHERE l.product=p.id AND COALESCE(json_extract(l.body,'\$.projectionVersion'),1)<>2 AND $saleUnsettled ORDER BY lo.ordinal DESC LIMIT 1)
         LEFT JOIN local_order co ON co.id=lc.id
         WHERE p.active=${includeArchived ? 0 : 1} AND (p.name LIKE ? ESCAPE '\\' OR p.sku LIKE ? ESCAPE '\\' OR p.id IN (SELECT product FROM barcodes WHERE barcode=?))
-        ${shortagesOnly ? 'AND local_quantity<0' : ''} ORDER BY p.name COLLATE NOCASE,p.id LIMIT 50""",
-        ['%$escaped%', '%$escaped%', query.trim()]);
-    return rows
-        .map((r) => InventoryRow(
-            _product(r['body']),
-            r['local_quantity'] as int,
-            r['revision'] as int,
-            r['unsettled'] as int))
-        .toList();
+        ${shortagesOnly ? 'AND local_quantity<0' : ''} ${lowStockThreshold != null ? 'AND local_quantity<=?' : ''} ORDER BY p.name COLLATE NOCASE,p.id LIMIT ? OFFSET ?""",
+          [
+            '%$escaped%',
+            '%$escaped%',
+            query.trim(),
+            if (lowStockThreshold != null) lowStockThreshold,
+            limit,
+            offset
+          ]);
+      return rows
+          .map((r) => InventoryRow(
+              _product(r['body']),
+              r['local_quantity'] as int,
+              r['revision'] as int,
+              r['unsettled'] as int))
+          .toList();
+    } finally {
+      trace.finish();
+    }
   }
+
+  Future<List<InventoryRow>> lowStockPage({int offset = 0, int limit = 50}) =>
+      search('', lowStockThreshold: 10, offset: offset, limit: limit);
 
   Future<BarcodeMatch?> lookupBarcode(String barcode) async {
     final rows = await _db.rawQuery(
@@ -768,8 +821,10 @@ final class InventoryStore {
     required String reason,
     String? batchNumber,
     String? expiryDate,
-  }) =>
-      _db.transaction((tx) async {
+  }) async {
+    final trace = TimelineTask()..start('inventory.recordReceiving');
+    try {
+      await _db.transaction((tx) async {
         if (operationId.isEmpty ||
             operationId.length > 128 ||
             operationId.contains('/') ||
@@ -826,6 +881,10 @@ final class InventoryStore {
           });
         }
       });
+    } finally {
+      trace.finish();
+    }
+  }
 
   Future<List<BatchExpiryRecord>> getBatches(String productId) async {
     final rows = await _db.query('batches',

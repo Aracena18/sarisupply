@@ -1,0 +1,41 @@
+[
+  {
+    "app": "admin",
+    "package": "com.sarisupply.sarisupply_admin",
+    "install": true,
+    "sameSignature": true,
+    "firstInstallTimeRetained": true,
+    "releaseNotDebuggable": true,
+    "launchStatus": true,
+    "processAlive": true,
+    "startupCrash": false,
+    "apkSha256": "594f9ea8cdd1d7b2aed9e61a0094f45990fba9d6b311b3f88b805d99b33f891f",
+    "apkBytes": 58291898
+  },
+  {
+    "app": "pos",
+    "package": "com.sarisupply.sarisupply_pos.dev",
+    "install": true,
+    "sameSignature": true,
+    "firstInstallTimeRetained": true,
+    "releaseNotDebuggable": true,
+    "launchStatus": true,
+    "processAlive": true,
+    "startupCrash": false,
+    "apkSha256": "813d1250a657a9a4aa5919456daf3933332808bdd7c1976d8092630998bbd991",
+    "apkBytes": 79992322
+  },
+  {
+    "app": "driver",
+    "package": "com.sarisupply.sarisupply_driver.dev",
+    "install": true,
+    "sameSignature": true,
+    "firstInstallTimeRetained": true,
+    "releaseNotDebuggable": true,
+    "launchStatus": true,
+    "processAlive": true,
+    "startupCrash": false,
+    "apkSha256": "c3016dedd2b3d640528c281bc5c1f655fa3487bbfdb2914d250f492399f25d6b",
+    "apkBytes": 57768369
+  }
+]

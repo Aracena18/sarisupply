@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sarisupply_inventory/sarisupply_inventory.dart';
 import 'package:sarisupply_models/sarisupply_models.dart';
@@ -35,11 +36,33 @@ Future<void> pumpCatalogUntil(
   }
   expect(ready(), isTrue,
       reason: 'Catalog did not reach the expected visible state');
-  await tester.pumpAndSettle();
+  // Network thumbnails keep a loading animation alive in fake async, so
+  // pumpAndSettle never completes here. Bounded pumps only (product_dialog_test
+  // precedent).
+  for (var i = 0; i < 5; i++) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
 }
 
 void main() {
   sqfliteFfiInit();
+  // Product thumbnails use a disk image cache backed by path_provider, which
+  // has no platform implementation in widget tests. Serve temp directories so
+  // thumbnail loads fail closed to the fallback icon instead of throwing.
+  TestWidgetsFlutterBinding.ensureInitialized();
+  const pathChannel = MethodChannel('plugins.flutter.io/path_provider');
+  Directory? pathDir;
+  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+      .setMockMethodCallHandler(pathChannel, (call) async {
+    if (call.method == 'getTemporaryDirectory' ||
+        call.method == 'getApplicationSupportDirectory' ||
+        call.method == 'getApplicationDocumentsDirectory') {
+      pathDir ??=
+          await Directory.systemTemp.createTemp('sarisupply-test-paths');
+      return pathDir!.path;
+    }
+    return null;
+  });
   testWidgets(
       'device authorization denial requests gate recovery and retains business file',
       (tester) async {
@@ -133,14 +156,18 @@ void main() {
     expect(find.textContaining('70.00'), findsNothing);
     await tester.enterText(find.byType(TextField), '00999');
     await tester.pump(const Duration(milliseconds: 160));
-    await pumpCatalogUntil(tester,
-        () => find.text('Barcode match: pack · ₱70.00').evaluate().isNotEmpty);
-    expect(find.text('Barcode match: pack · ₱70.00'), findsOneWidget);
+    await pumpCatalogUntil(
+        tester, () => find.text('Match: pack · ₱70.00').evaluate().isNotEmpty);
+    expect(find.text('Match: pack · ₱70.00'), findsOneWidget);
     await tester.tap(find.text('Sync'));
     await pumpCatalogUntil(
         tester, () => find.byType(LinearProgressIndicator).evaluate().isEmpty);
     expect(find.textContaining('secret server failure'), findsNothing);
     expect(find.text('Milk'), findsOneWidget);
+    // The image disk cache schedules a deferred cleanup Timer on first use.
+    // Fire it here; otherwise it is still pending at teardown and fails the
+    // test even though the UI reached the expected state.
+    await tester.pump(const Duration(seconds: 11));
     await tester.pumpWidget(const SizedBox());
     await tester.runAsync(() async {
       await store.close();

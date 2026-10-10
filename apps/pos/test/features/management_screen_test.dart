@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sarisupply_auth/sarisupply_auth.dart';
@@ -7,10 +8,16 @@ import 'package:sarisupply_pos/features/management/presentation/management_form_
 
 class _Pages extends Fake implements ManagementRepository {
   final cursors = <String?>[];
+  final kinds = <ManagementKind>[];
+  bool denied = false;
   @override
   Future<ManagementPage> list(String merchant, ManagementKind kind,
       {String? cursor}) async {
     cursors.add(cursor);
+    kinds.add(kind);
+    if (denied) {
+      throw FirebaseException(plugin: 'fixture', code: 'permission-denied');
+    }
     return ManagementPage(
         records: cursor == null
             ? []
@@ -41,17 +48,112 @@ class _Cashiers extends Fake implements CashierRepository {
   }
 }
 
-MerchantMembership _member(MerchantRole role) => MerchantMembership(
-    userId: 'human',
-    merchantId: 'store',
-    role: role,
-    status: MembershipStatus.active,
-    allBranches: role == MerchantRole.owner,
-    branchIds: ['main'],
-    createdAt: DateTime.utc(2026),
-    createdBy: 'owner',
-    updatedAt: DateTime.utc(2026));
+MerchantMembership _member(MerchantRole role, {String merchantId = 'store'}) =>
+    MerchantMembership(
+        userId: 'human',
+        merchantId: merchantId,
+        role: role,
+        status: MembershipStatus.active,
+        allBranches: role == MerchantRole.owner,
+        branchIds: ['main'],
+        createdAt: DateTime.utc(2026),
+        createdBy: 'owner',
+        updatedAt: DateTime.utc(2026));
 void main() {
+  testWidgets('revoked management access clears cached rows and disables work',
+      (tester) async {
+    final pages = _Pages();
+    await tester.pumpWidget(MaterialApp(
+        home: ManagementScreen(
+            memberships: [_member(MerchantRole.manager)],
+            management: pages,
+            membershipRepository: _Memberships(),
+            cashiers: _Cashiers(),
+            devices: _Devices())));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Load more'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ana'), findsOneWidget);
+    pages.denied = true;
+    await tester.tap(find.text('Refresh'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ana'), findsNothing);
+    final add = tester
+        .widget<FilledButton>(find.widgetWithText(FilledButton, 'Add cashier'));
+    expect(add.onPressed, isNull);
+    final calls = pages.kinds.length;
+    await tester.tap(find.text('Branches').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Team').last);
+    await tester.pumpAndSettle();
+    expect(pages.kinds, hasLength(calls));
+    expect(find.text('Ana'), findsNothing);
+  });
+
+  testWidgets('management search filters and clears loaded records',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+        home: ManagementScreen(
+            memberships: [_member(MerchantRole.manager)],
+            management: _Pages(),
+            membershipRepository: _Memberships(),
+            cashiers: _Cashiers(),
+            devices: _Devices())));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Load more'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'missing');
+    await tester.pumpAndSettle();
+    expect(find.text('Ana'), findsNothing);
+    expect(find.text('No matching cashiers in the loaded records.'),
+        findsOneWidget);
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ana'), findsOneWidget);
+    await tester.tap(find.text('Branches').last);
+    await tester.pumpAndSettle();
+    expect(find.text('missing'), findsNothing);
+  });
+
+  testWidgets('changing stores retains the Branches and Devices page kind',
+      (tester) async {
+    final pages = _Pages();
+    await tester.pumpWidget(MaterialApp(
+        home: ManagementScreen(
+            memberships: [
+          _member(MerchantRole.owner),
+          _member(MerchantRole.manager, merchantId: 'second'),
+        ],
+            management: pages,
+            membershipRepository: _Memberships(),
+            cashiers: _Cashiers(),
+            devices: _Devices())));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Branches').last);
+    await tester.pumpAndSettle();
+    tester
+        .widget<DropdownButtonFormField<String>>(
+            find.byType(DropdownButtonFormField<String>))
+        .onChanged!('second');
+    await tester.pumpAndSettle();
+    expect(pages.kinds.last, ManagementKind.branches);
+    expect(
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        0);
+    await tester.tap(find.text('Devices').last);
+    await tester.pumpAndSettle();
+    tester
+        .widget<DropdownButtonFormField<String>>(
+            find.byType(DropdownButtonFormField<String>))
+        .onChanged!('store');
+    await tester.pumpAndSettle();
+    expect(pages.kinds.last, ManagementKind.devices);
+    expect(
+        tester.widget<NavigationBar>(find.byType(NavigationBar)).selectedIndex,
+        3);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('access reassignment removes inactive assignments explicitly',
       (tester) async {
     List<String>? saved;
@@ -128,6 +230,8 @@ void main() {
             cashiers: cashiers,
             devices: _Devices())));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Team').last);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Load more'));
     await tester.pumpAndSettle();
     await tester.tap(find.byType(PopupMenuButton<String>));
@@ -149,8 +253,8 @@ void main() {
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
     expect(find.text('483920'), findsNothing);
-    await tester.tap(find.text('Load more'));
-    await tester.pumpAndSettle();
+    expect(find.text('Ana'), findsOneWidget);
+    expect(find.text('Load more'), findsNothing);
     await tester.tap(find.byType(PopupMenuButton<String>));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Reset PIN'));
@@ -207,5 +311,43 @@ void main() {
     await tester.pumpAndSettle();
     expect(ids.length, 2);
     expect(ids[0], ids[1]);
+  });
+
+  testWidgets('owner navigation exposes overview and visible team categories',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final pages = _Pages();
+    await tester.pumpWidget(MaterialApp(
+        home: ManagementScreen(
+            memberships: [_member(MerchantRole.owner)],
+            management: pages,
+            membershipRepository: _Memberships(),
+            cashiers: _Cashiers(),
+            devices: _Devices())));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NavigationBar), findsOneWidget);
+    expect(find.text('Overview'), findsOneWidget);
+    expect(find.text('Branches'), findsOneWidget);
+    expect(find.text('Team'), findsOneWidget);
+    expect(find.text('Devices'), findsOneWidget);
+    expect(find.byType(DropdownButtonFormField<ManagementKind>), findsNothing);
+
+    await tester.tap(find.text('Team'));
+    await tester.pumpAndSettle();
+    expect(find.text('Cashiers'), findsOneWidget);
+    expect(find.text('Managers'), findsOneWidget);
+    expect(find.text('Invitations'), findsOneWidget);
+    await tester.tap(find.text('Managers'));
+    await tester.pumpAndSettle();
+    expect(pages.kinds.last, ManagementKind.managers);
+
+    await tester.tap(find.text('Branches'));
+    await tester.pumpAndSettle();
+    expect(pages.kinds.last, ManagementKind.branches);
+    expect(tester.takeException(), isNull);
   });
 }

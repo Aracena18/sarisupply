@@ -31,6 +31,64 @@ final class CatalogUnit {
       barcode: m['barcode'] as String);
 }
 
+final class ProductImageRef {
+  const ProductImageRef(
+      {required this.assetId,
+      required this.publicId,
+      required this.version,
+      required this.secureUrl,
+      required this.thumbnailUrl});
+  final String assetId, publicId, secureUrl, thumbnailUrl;
+  final int version;
+  Map<String, Object?> toMap() => {
+        'assetId': assetId,
+        'publicId': publicId,
+        'version': version,
+        'secureUrl': secureUrl,
+        'thumbnailUrl': thumbnailUrl
+      };
+  factory ProductImageRef.fromMap(Map<String, Object?> map) => ProductImageRef(
+      assetId: map['assetId'] as String,
+      publicId: map['publicId'] as String,
+      version: map['version'] as int,
+      secureUrl: map['secureUrl'] as String,
+      thumbnailUrl: map['thumbnailUrl'] as String);
+}
+
+final class ProductImageChange {
+  const ProductImageChange.keep()
+      : action = 'keep',
+        uploadId = null,
+        url = null;
+  const ProductImageChange.remove()
+      : action = 'remove',
+        uploadId = null,
+        url = null;
+  const ProductImageChange.upload(this.uploadId)
+      : action = 'set',
+        url = null;
+  const ProductImageChange.url(this.url)
+      : action = 'url',
+        uploadId = null;
+  final String action;
+  final String? uploadId, url;
+  Map<String, Object?> toMap() => {
+        'action': action,
+        if (uploadId != null) 'uploadId': uploadId,
+        if (url != null) 'url': url
+      };
+}
+
+abstract interface class ProductImageGateway {
+  Future<ProductImageRef> uploadProductPhoto(String merchantId,
+      String productId, String uploadId, List<int> bytes, String format);
+  Future<CatalogProduct> saveProductWithImage(
+      String merchantId,
+      CatalogProduct product,
+      String operationId,
+      ProductImageChange imageChange);
+}
+
 final class CatalogProduct {
   CatalogProduct(
       {required this.id,
@@ -40,7 +98,8 @@ final class CatalogProduct {
       required this.revision,
       required this.active,
       required List<CatalogUnit> units,
-      this.imageUrl})
+      this.imageUrl,
+      this.image})
       : units = List.unmodifiable(units) {
     if (id.isEmpty ||
         id.length > 128 ||
@@ -70,6 +129,8 @@ final class CatalogProduct {
   final bool active;
   final List<CatalogUnit> units;
   final String? imageUrl;
+  final ProductImageRef? image;
+  String? get thumbnailUrl => image?.thumbnailUrl ?? imageUrl;
   Map<String, Object?> toMap() => {
         'id': id,
         'sku': sku,
@@ -79,6 +140,7 @@ final class CatalogProduct {
         'active': active,
         'units': units.map((u) => u.toMap()).toList(),
         if (imageUrl != null) 'imageUrl': imageUrl,
+        if (image != null) 'image': image!.toMap(),
       };
   factory CatalogProduct.fromMap(Map<String, Object?> m) => CatalogProduct(
       id: m['id'] as String,
@@ -88,6 +150,10 @@ final class CatalogProduct {
       revision: m['revision'] as int,
       active: m['active'] as bool,
       imageUrl: m['imageUrl'] as String?,
+      image: m['image'] == null
+          ? null
+          : ProductImageRef.fromMap(
+              Map<String, Object?>.from(m['image'] as Map)),
       units: (m['units'] as List)
           .map((u) => CatalogUnit.fromMap(Map<String, Object?>.from(u as Map)))
           .toList());
@@ -101,6 +167,8 @@ final class CatalogProduct {
     bool? active,
     List<CatalogUnit>? units,
     String? imageUrl,
+    ProductImageRef? image,
+    bool clearImage = false,
   }) =>
       CatalogProduct(
         id: id ?? this.id,
@@ -110,7 +178,8 @@ final class CatalogProduct {
         revision: revision ?? this.revision,
         active: active ?? this.active,
         units: units ?? this.units,
-        imageUrl: imageUrl ?? this.imageUrl,
+        imageUrl: clearImage ? null : imageUrl ?? this.imageUrl,
+        image: clearImage ? null : image ?? this.image,
       );
 }
 

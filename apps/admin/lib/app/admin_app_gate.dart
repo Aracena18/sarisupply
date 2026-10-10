@@ -12,12 +12,14 @@ class AdminAppGate extends StatelessWidget {
     this.access,
     this.reviews,
     this.procurement,
+    this.authorization,
   });
 
   final AuthRepository? auth;
   final AdminAccessRepository? access;
   final AdminReviewRepository? reviews;
   final ProcurementGateway? procurement;
+  final AuthorizationWorkspaceFunctions? authorization;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +29,8 @@ class AdminAppGate extends StatelessWidget {
         access: access ?? FirebaseAdminAccessRepository.forDefaultApp(),
         reviews: reviews ?? MerchantApplicationFunctions.forDefaultApp(),
         procurement: procurement,
+        authorization:
+            authorization ?? AuthorizationWorkspaceFunctions.forDefaultApp(),
       );
     } catch (_) {
       return const Scaffold(

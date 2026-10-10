@@ -5,6 +5,7 @@ import { requireHuman } from '../common/authz';
 import { toHttpsError } from '../common/errors';
 import {
   reviewMerchantApplication as reviewApplication,
+  listPendingMerchantApplications as listPendingApplications,
   saveMerchantApplicationDraft as saveDraft,
   submitMerchantApplication as submitApplication,
 } from './application-service';
@@ -47,6 +48,17 @@ export const submitMerchantApplication = onCall(options, (request) =>
   }),
 );
 
+export const listPendingMerchantApplications = onCall(options, (request) =>
+  handle(async () => {
+    const data = dataObject(request.data);
+    return listPendingApplications(
+      getFirestore(),
+      request,
+      data.companyId as string,
+    );
+  }),
+);
+
 export const reviewMerchantApplication = onCall(options, (request) =>
   handle(async () => {
     const data = dataObject(request.data);
@@ -54,6 +66,7 @@ export const reviewMerchantApplication = onCall(options, (request) =>
       applicationId: data.applicationId as string,
       decision: data.decision as 'approve' | 'reject',
       operationId: data.operationId as string,
+      companyId: data.companyId as string | undefined,
       reviewNotes: data.reviewNotes as string | undefined,
     });
   }),

@@ -3,6 +3,7 @@ import 'package:sarisupply_design_system/sarisupply_design_system.dart';
 import 'package:sarisupply_firebase/sarisupply_firebase.dart';
 import 'package:sarisupply_models/sarisupply_models.dart';
 import 'package:uuid/uuid.dart';
+import 'driver_location_screen.dart';
 
 class OwnerDispatchScreen extends StatefulWidget {
   const OwnerDispatchScreen(
@@ -271,12 +272,20 @@ class _OwnerDispatchScreenState extends State<OwnerDispatchScreen> {
     final locked = _busy || _savedAttempt != null;
     return Scaffold(
         appBar: sariSupplyTaskAppBar(context,
-            title: 'Dispatch · ${widget.warehouseName}'),
+            title: 'Dispatch · ${widget.warehouseName}',
+            actions: [
+              IconButton(
+                  onPressed: _busy ? null : _refresh,
+                  tooltip: 'Refresh dispatch',
+                  icon: const Icon(Icons.refresh))
+            ]),
         body: SariSupplyPageContent(
             maxWidth: 700,
             child: RefreshIndicator(
                 onRefresh: _refresh,
                 child: ListView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     children: [
                       if (_busy) const LinearProgressIndicator(),
@@ -363,6 +372,24 @@ class _OwnerDispatchScreenState extends State<OwnerDispatchScreen> {
                                           '${run['driverName']} · ${run['vehicleInfo']}'),
                                       Text(
                                           '${run['status']} · ${(run['stops'] as List).length} stops'),
+                                      if (['dispatched', 'inTransit']
+                                          .contains(run['status']))
+                                        OutlinedButton.icon(
+                                            onPressed: _busy
+                                                ? null
+                                                : () => Navigator.of(context)
+                                                    .push(MaterialPageRoute<void>(
+                                                        builder: (_) =>
+                                                            DriverLocationScreen(
+                                                                merchantId: widget
+                                                                    .merchantId,
+                                                                run: run,
+                                                                gateway:
+                                                                    _gateway))),
+                                            icon: const Icon(
+                                                Icons.location_on_outlined),
+                                            label:
+                                                const Text('View driver location')),
                                       if (run['status'] == 'draft')
                                         FilledButton(
                                             onPressed: _busy

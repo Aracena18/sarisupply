@@ -55,6 +55,9 @@ deno_token.txt
 
 deno-deploy-token.txt
 
+# Supplied Cloudinary account credentials
+/sarisupply_design_system_v1/cloudinary_credentials
+
 # Local Android build state
 **/.gradle/
 **/local.properties

@@ -223,9 +223,8 @@ class _PaymentScreenState extends State<PaymentScreen>
                         Padding(
                             padding: const EdgeInsets.only(top: 16),
                             child: Text(c.error!,
-                                style: TextStyle(
-                                    color:
-                                        Theme.of(context).colorScheme.error))),
+                                style:
+                                    TextStyle(color: SariSupplyColors.error))),
                       if (_error != null)
                         Padding(
                             padding: const EdgeInsets.only(top: 16),

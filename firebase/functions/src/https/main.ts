@@ -7,14 +7,19 @@ import { createCommandDispatcher } from './commands';
 import { readBackendConfig } from './config';
 import { createHttpsHandler } from './handler';
 import { createGatewayServer } from './server';
+import { mediaFromEnvironment } from '../media/cloudinary';
+import { ProductImageService } from '../media/product-image-service';
 
 const config = readBackendConfig(process.env);
 const app = initializeApp({ projectId: config.projectId, credential: cert(config.serviceAccount) });
 const auth = getAuth(app);
 // Deno 2.5's Node gRPC path fails the local compatibility probe. REST retains
 // the Admin SDK's transaction semantics and avoids that transport dependency.
-const commands = createCommandDispatcher(initializeFirestore(app, { preferRest: true }),
-  (uid, claims) => auth.createCustomToken(uid, claims), createPinHasher(config.pinPepper));
+const db = initializeFirestore(app, { preferRest: true });
+const media = new ProductImageService(db, config.environment, mediaFromEnvironment(process.env),
+  process.env.CLOUDINARY_UPLOADS_ENABLED === 'true');
+const commands = createCommandDispatcher(db,
+  (uid, claims) => auth.createCustomToken(uid, claims), createPinHasher(config.pinPepper), media);
 const handler = createHttpsHandler(config, { ...commands,
   verifyIdToken: (token) => auth.verifyIdToken(token, true),
   verifyAppCheckToken: (token) => getAppCheck(app).verifyToken(token),

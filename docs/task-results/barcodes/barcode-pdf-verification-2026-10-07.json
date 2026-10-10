@@ -1,0 +1,20 @@
+[
+  {
+    "pdf": "sari-store-all-barcodes-2026-10-07.pdf",
+    "pages": 8,
+    "labels": 113,
+    "verified_decodes": 113,
+    "failures": [],
+    "verification": "Every printed label rendered from the final PDF at 300 dpi and decoded as EAN-13 using ZXing-C++.",
+    "physical_print_verified": false
+  },
+  {
+    "pdf": "sari-store-base-unit-barcodes-2026-10-07.pdf",
+    "pages": 5,
+    "labels": 62,
+    "verified_decodes": 62,
+    "failures": [],
+    "verification": "Every printed label rendered from the final PDF at 300 dpi and decoded as EAN-13 using ZXing-C++.",
+    "physical_print_verified": false
+  }
+]

@@ -31,7 +31,8 @@ class SariSupplyDriverApp extends StatelessWidget {
     try {
       home = DriverAppGate(
           auth: auth ?? FirebaseGoogleAuthRepository.forDefaultApp(),
-          gateway: gateway ?? DeliveryFunctions.forHuman());
+          gateway: gateway ?? DeliveryFunctions.forHuman(),
+          authorization: AuthorizationWorkspaceFunctions.forDefaultApp());
     } catch (_) {
       home = const Scaffold(
           body: SariSupplyEntry(
@@ -44,7 +45,7 @@ class SariSupplyDriverApp extends StatelessWidget {
     return MaterialApp(
         debugShowCheckedModeBanner: false,
         title: AppIdentity.driverName,
-        theme: SariSupplyTheme.light(),
+        theme: SariSupplyTheme.light,
         home: home);
   }
 }

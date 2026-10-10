@@ -35,10 +35,68 @@ export async function manageDeliveries(db: Firestore, request: AuthRequest, inpu
     const merchant = await tx.get(db.doc(`merchants/${merchantId}`));
     if (merchant.get('status') !== 'active') throw new HttpsError('permission-denied', 'Access denied');
     const driver = await tx.get(db.doc(`merchants/${merchantId}/drivers/${uid}`));
-    const driverAction = ['listRuns', 'submitStopProof', 'updateStopStatus'].includes(action);
-    if (['submitStopProof','updateStopStatus'].includes(action) && driver.get('status') !== 'active') throw new HttpsError('permission-denied','Active driver assignment required');
+    const driverAction = ['listRuns', 'submitStopProof', 'updateStopStatus', 'updateDriverLocation', 'pauseDriverLocation'].includes(action);
+    if (['submitStopProof','updateStopStatus','updateDriverLocation','pauseDriverLocation'].includes(action) && driver.get('status') !== 'active') throw new HttpsError('permission-denied','Active driver assignment required');
     if (!driverAction || driver.get('status') !== 'active') {
       await authorization.requireOwner(uid, merchantId);
+    }
+
+    if (['updateDriverLocation', 'pauseDriverLocation', 'readDriverLocation'].includes(action)) {
+      const runId = requireDocumentId(input.runId, 'run ID');
+      const root = `merchants/${merchantId}`;
+      const run = await tx.get(db.doc(`${root}/delivery_runs/${runId}`));
+      if (!run.exists) throw new HttpsError('not-found', 'Delivery run unavailable');
+      const assignedDriverId = requireDocumentId(run.get('driverId'), 'driver ID');
+      const warehouseId = requireDocumentId(run.get('warehouseId'), 'warehouse ID');
+      const warehouse = await tx.get(db.doc(`${root}/warehouses/${warehouseId}`));
+      if (warehouse.get('active') !== true) throw new HttpsError('permission-denied', 'Warehouse unavailable');
+      const assigned = assignedDriverId === uid ? driver :
+        await tx.get(db.doc(`${root}/drivers/${assignedDriverId}`));
+      if (assigned.get('status') !== 'active' || assigned.get('warehouseId') !== warehouseId) {
+        throw new HttpsError('permission-denied', 'Driver assignment changed');
+      }
+      const ref = db.doc(`${root}/driverLocations/${runId}`);
+      const previous = await tx.get(ref);
+      if (action === 'readDriverLocation') {
+        // The normal owner authorization above applies even when the owner also drives.
+        const raw = previous.data();
+        return {runId, location: raw?.capturedAt && raw.driverId === assignedDriverId ?
+          {...raw, sharing: raw.sharing === true && ['dispatched','inTransit'].includes(run.get('status'))} : null};
+      }
+      if (assignedDriverId !== uid) throw new HttpsError('permission-denied', 'Assigned driver required');
+      const now = Date.now();
+      const eventAtMs = integer(input.eventAtMs, 0, Number.MAX_SAFE_INTEGER);
+      if (Math.abs(now - eventAtMs) > 300000) throw new HttpsError('invalid-argument', 'Check the phone date and time');
+      const previousEvent = previous.get('eventAtMs');
+      if (typeof previousEvent === 'number' && eventAtMs <= previousEvent) {
+        if (action === 'pauseDriverLocation') return {status:'paused',runId};
+        throw new HttpsError('failed-precondition', 'Location update is obsolete');
+      }
+      if (action === 'pauseDriverLocation') {
+        tx.set(ref, {runId, driverId:uid, sharing:false, eventAtMs}, {merge:true});
+        return {status:'paused',runId};
+      }
+      if (!['dispatched','inTransit'].includes(run.get('status'))) {
+        throw new HttpsError('failed-precondition', 'Delivery run is no longer active');
+      }
+      const coordinate = (value: unknown, min: number, max: number) => {
+        if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+          throw new HttpsError('invalid-argument', 'Invalid location');
+        }
+        return value;
+      };
+      const capturedAt = text(input.capturedAt, 40);
+      const captureTime = Date.parse(capturedAt);
+      if (!Number.isFinite(captureTime) || captureTime > now + 30000 || now - captureTime > 120000) {
+        throw new HttpsError('invalid-argument', 'Location fix is too old');
+      }
+      const location = {runId, driverId:uid, warehouseId,
+        latitude:coordinate(input.latitude,-90,90), longitude:coordinate(input.longitude,-180,180),
+        accuracyMeters:coordinate(input.accuracyMeters,0,100000),
+        capturedAt:new Date(captureTime).toISOString(), receivedAt:new Date(now).toISOString(),
+        sharing:true, eventAtMs};
+      tx.set(ref, location);
+      return {runId, location};
     }
 
     if (action === 'assignDriver') {

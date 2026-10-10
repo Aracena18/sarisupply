@@ -72,6 +72,8 @@ class CheckoutApi extends Fake implements CheckoutGateway {
 }
 
 class CheckoutFixture {
+  CheckoutFixture({this.productName = 'Milk'});
+  final String productName;
   final now = DateTime.utc(2026, 10, 5);
   final scope = CheckoutScope(
       merchantId: 'm',
@@ -107,7 +109,7 @@ class CheckoutFixture {
     final p = CatalogProduct(
         id: 'p',
         sku: 'MILK',
-        name: 'Milk',
+        name: productName,
         baseUnit: 'piece',
         active: true,
         revision: 1,
@@ -183,6 +185,17 @@ Future<void> scanPack(WidgetTester tester, CheckoutFixture f) async {
   await pumpCheckout(tester);
   f.camera.emit('00124');
   f.camera.emit('00124');
+  await pumpCheckout(tester);
+  final done = find.widgetWithText(FilledButton, 'Done · ₱75.00');
+  for (var i = 0;
+      i < 50 && tester.widget<FilledButton>(done).onPressed == null;
+      i++) {
+    await tester
+        .runAsync(() => Future<void>.delayed(const Duration(milliseconds: 40)));
+    await tester.pump();
+  }
+  expect(tester.widget<FilledButton>(done).onPressed, isNotNull);
+  await tester.tap(done);
   await pumpCheckout(tester);
 }
 

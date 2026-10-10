@@ -328,8 +328,7 @@ class _CustomerCreditScreenState extends State<CustomerCreditScreen> {
                                     label: Text(
                                       'OWES ${formatPhp(c.balanceCentavos)}',
                                       style: TextStyle(
-                                        color:
-                                            Theme.of(context).colorScheme.error,
+                                        color: SariSupplyColors.error,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),

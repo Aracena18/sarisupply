@@ -3,8 +3,10 @@ import 'package:sarisupply_models/sarisupply_models.dart';
 import '../bootstrap/firebase_bootstrap.dart';
 import 'https_merchant_gateway.dart';
 import 'merchant_application_functions.dart';
+import 'product_image_functions.dart';
 
-final class InventoryFunctions implements InventoryGateway {
+final class InventoryFunctions
+    implements InventoryGateway, ProductImageGateway {
   InventoryFunctions({required MerchantCallableGateway gateway})
       : _gateway = gateway;
   factory InventoryFunctions.forHuman() =>
@@ -133,7 +135,20 @@ final class InventoryFunctions implements InventoryGateway {
         operation.details['delta'] is! int) {
       throw const FormatException('Stock operation needs review');
     }
-    final r = await _gateway.call(command, data);
+    Map<String, Object?> r;
+    try {
+      r = await _gateway.call(command, data);
+    } on FirebaseException catch (e) {
+      // Permanent rejections can never succeed on retry. Record them as
+      // blocked so the operation surfaces Needs review with Withdraw instead
+      // of failing every sync forever. Transient and auth errors rethrow.
+      if (const {'invalid-argument', 'failed-precondition', 'already-exists'}
+          .contains(e.code)) {
+        return StockAck(operation.id, 'blocked',
+            message: e.message ?? 'Sync rejected this operation');
+      }
+      rethrow;
+    }
     if (operation.kind.startsWith('transfer')) {
       if (r['transferId'] != operation.details['transferId']) {
         throw const FormatException('Invalid transfer acknowledgement');
@@ -158,11 +173,32 @@ final class InventoryFunctions implements InventoryGateway {
   @override
   Future<CatalogProduct> saveProduct(
       String merchantId, CatalogProduct product, String operationId) async {
+    return _saveProduct(merchantId, product, operationId);
+  }
+
+  @override
+  Future<ProductImageRef> uploadProductPhoto(String merchantId,
+          String productId, String uploadId, List<int> bytes, String format) =>
+      ProductImageFunctions(_gateway)
+          .upload(merchantId, productId, uploadId, bytes, format);
+
+  @override
+  Future<CatalogProduct> saveProductWithImage(
+          String merchantId,
+          CatalogProduct product,
+          String operationId,
+          ProductImageChange imageChange) =>
+      _saveProduct(merchantId, product, operationId, imageChange: imageChange);
+
+  Future<CatalogProduct> _saveProduct(
+      String merchantId, CatalogProduct product, String operationId,
+      {ProductImageChange? imageChange}) async {
     final r = await _gateway.call('saveCatalogProduct', {
       'merchantId': merchantId,
       'operationId': operationId,
       'expectedRevision': product.revision,
-      'product': product.toMap()
+      'product': product.toMap(),
+      if (imageChange != null) 'imageChange': imageChange.toMap(),
     });
     final saved = CatalogProduct.fromMap(r);
     if (saved.id != product.id || saved.revision != product.revision + 1) {

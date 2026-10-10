@@ -512,6 +512,11 @@ git commit -m "feat: add backend authorization and audit foundation"
 
 ### Task 5: Implement merchant application and idempotent Admin approval
 
+Historical implementation note: this milestone initially assigned review to
+Platform Admin. The approved 2026-10-07 architecture decision assigns store
+application review to the supplying Company Owner instead; see the current
+identity specification and `SYSTEM_ARCHITECTURE.md`.
+
 **Files:**
 - Create: `firebase/functions/src/merchant/application-service.ts`
 - Create: `firebase/functions/src/merchant/application-functions.ts`

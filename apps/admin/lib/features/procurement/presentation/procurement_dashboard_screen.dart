@@ -472,10 +472,15 @@ class _ProcurementDashboardScreenState extends State<ProcurementDashboardScreen>
           child: Wrap(
             spacing: 12,
             runSpacing: 12,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                '${_suppliers.length} Registered Suppliers',
-                style: Theme.of(context).textTheme.titleMedium,
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  '${_suppliers.length} Registered Suppliers',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
               FilledButton.icon(
                 icon: const Icon(Icons.add),
@@ -521,8 +526,9 @@ class _ProcurementDashboardScreenState extends State<ProcurementDashboardScreen>
                             Chip(
                               label: Text(s.active ? 'ACTIVE' : 'INACTIVE'),
                               backgroundColor: s.active
-                                  ? Colors.green.shade100
-                                  : Colors.grey.shade200,
+                                  ? SariSupplyColors.success
+                                      .withValues(alpha: 0.1)
+                                  : SariSupplyColors.divider,
                             ),
                           ],
                         ),
@@ -555,10 +561,15 @@ class _ProcurementDashboardScreenState extends State<ProcurementDashboardScreen>
           child: Wrap(
             spacing: 12,
             runSpacing: 12,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                '${_purchaseOrders.length} Purchase Orders',
-                style: Theme.of(context).textTheme.titleMedium,
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  '${_purchaseOrders.length} Purchase Orders',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
               ),
               FilledButton.icon(
                 icon: const Icon(Icons.add_shopping_cart),
@@ -606,7 +617,8 @@ class _ProcurementDashboardScreenState extends State<ProcurementDashboardScreen>
                             ),
                             Chip(
                               label: Text(po.status.name.toUpperCase()),
-                              backgroundColor: Colors.blue.shade100,
+                              backgroundColor:
+                                  SariSupplyColors.info.withValues(alpha: 0.1),
                             ),
                           ],
                         ),
@@ -678,7 +690,8 @@ class _ProcurementDashboardScreenState extends State<ProcurementDashboardScreen>
                     ),
                     Chip(
                       label: Text(p.status.name.toUpperCase()),
-                      backgroundColor: Colors.blue.shade100,
+                      backgroundColor:
+                          SariSupplyColors.info.withValues(alpha: 0.1),
                     ),
                   ],
                 ),

@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "cleanup:photos": "node lib/media/cleanup.js",
     "start:https": "node lib/https/main.js",
     "check:capacity": "node lib/https/capacity.js ../../docs/engineering/FREE_CAPACITY_PROFILE.json",
     "grant-admin": "node lib/admin/grant-admin.js",

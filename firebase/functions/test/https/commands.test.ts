@@ -4,7 +4,10 @@ import { createCommandDispatcher } from '../../src/https/commands';
 describe('HTTPS command registry', () => {
   it('exposes every current command and no inherited object properties', () => {
     const commands = createCommandDispatcher({} as never, {} as never, {} as never);
-    for (const name of ['saveCatalogProduct', 'recordStockCount', 'pullInventory', 'listManagementRecords', 'reviewMerchantApplication', 'saveMerchantApplicationDraft',
+    for (const name of ['getCompanyWorkspace', 'getAuthorizationWorkspaces', 'listMyCompanyInvitations',
+      'listCompanyInvitations', 'createCompanyInvitation', 'revokeCompanyInvitation',
+      'acceptCompanyInvitation', 'listCompanyStaff', 'removeCompanyMemberRole',
+      'listCompanyWarehouses', 'saveCompanyWarehouse', 'prepareProductImageUpload', 'completeProductImageUpload', 'saveCatalogProduct', 'recordStockCount', 'pullInventory', 'listManagementRecords', 'reviewMerchantApplication', 'saveMerchantApplicationDraft',
       'submitMerchantApplication', 'acceptManagerInvitation', 'createManagerInvitation',
       'listMyInvitations', 'removeManager', 'revokeManagerInvitation', 'updateManagerAccess',
       'createBranch', 'deactivateBranch', 'activatePosDevice', 'getDeviceBootstrap',

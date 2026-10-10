@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:sarisupply_inventory/sarisupply_inventory.dart';
+import 'package:sarisupply_firebase/sarisupply_firebase.dart';
 import 'package:sarisupply_models/sarisupply_models.dart';
 import 'package:uuid/uuid.dart';
 import '../cashier_auth/domain/cashier_login_service.dart';
@@ -29,7 +30,8 @@ final class CheckoutController extends ChangeNotifier {
   CheckoutSale? recovery;
   CheckoutAuthorization? authorization;
   List<InventoryRow> products = [];
-  String? error, syncMessage;
+  String? error, syncMessage, notice;
+  bool noticeNeedsPriceReview = false;
   bool busy = false, syncing = false, allowed = false, _alive = true;
   Future<void> _edits = Future.value();
   Object? _saveError;
@@ -144,8 +146,66 @@ final class CheckoutController extends ChangeNotifier {
     return draft == null ? next : draft!.copyWith(lines: lines);
   }
 
-  Future<void> add(CatalogProduct p, CatalogUnit unit) async {
-    if (!editable) return;
+  String? takeNotice() {
+    final value = notice;
+    notice = null;
+    return value;
+  }
+
+  void _notice(String message, {bool reviewPrices = false}) {
+    notice = message;
+    noticeNeedsPriceReview = reviewPrices;
+    changed();
+  }
+
+  Future<void> _addFailure(Object failure) async {
+    if (failure is FirebaseException) {
+      if (['permission-denied', 'unauthenticated'].contains(failure.code)) {
+        await _deny();
+      } else {
+        _notice(operationErrorMessage(failure));
+      }
+      return;
+    }
+    final reason = failure is StateError
+        ? failure.message
+        : failure is ArgumentError
+            ? failure.message
+            : null;
+    if (reason == 'Quote changed' ||
+        reason == 'Inconsistent product quote' ||
+        reason == 'Inconsistent unit quote' ||
+        reason == 'Quote changed; sync and review') {
+      _notice(
+          'This cart has older prices. Review prices, then add the item again.',
+          reviewPrices: true);
+    } else if (reason == 'Invalid receipt') {
+      _notice(
+          'Cart limit reached: 20 different products, 50 lines. Finish this sale or remove an item.');
+    } else if (reason == 'Receipt is too large') {
+      _notice(
+          'Cart quantity or total exceeds the supported limit. Reduce the quantity or split this sale.');
+    } else if (reason == 'Shift unavailable') {
+      _notice('The shift changed. Lock and sign in again to reload checkout.');
+    } else if (_saveError != null) {
+      _notice('Cart could not be saved. Try again before taking payment.');
+    } else {
+      _notice('Could not add this item. Sync the catalog and try again.');
+    }
+  }
+
+  Future<bool> add(CatalogProduct p, CatalogUnit unit) async {
+    if (!editable) return false;
+    final existing = draft?.lines ?? const <CartLine>[];
+    final sameUnit =
+        existing.any((l) => l.productId == p.id && l.unit == unit.name);
+    if ((!existing.any((l) => l.productId == p.id) &&
+            existing.map((l) => l.productId).toSet().length >= 20) ||
+        (!sameUnit && existing.length >= 50)) {
+      _notice(
+          'Cart limit reached: 20 different products, 50 lines. Finish this sale or remove an item.');
+      return false;
+    }
     try {
       var sequence = await store.checkout.catalogSequence(p.id);
       if (sequence == null) {
@@ -154,7 +214,7 @@ final class CheckoutController extends ChangeNotifier {
         await store.checkout.resolveQuote(resolved.single);
         sequence = resolved.single.sequence;
       }
-      if (!editable) return;
+      if (!editable) return false;
       final lines = [...?draft?.lines];
       final n =
           lines.indexWhere((l) => l.productId == p.id && l.unit == unit.name);
@@ -178,9 +238,12 @@ final class CheckoutController extends ChangeNotifier {
       }
       updateDraft(_cart(lines));
       await flush();
-    } on Object {
-      error = 'Check cart limits or review prices before adding this item';
+      error = null;
       changed();
+      return true;
+    } on Object catch (failure) {
+      await _addFailure(failure);
+      return false;
     }
   }
 
@@ -196,9 +259,10 @@ final class CheckoutController extends ChangeNotifier {
       }
       updateDraft(_cart(lines));
       await flush();
-    } on Object {
-      error = 'Check the quantity and cart limit';
+      error = null;
       changed();
+    } on Object {
+      _notice('Check the quantity and cart limit.');
     }
   }
 
@@ -245,6 +309,8 @@ final class CheckoutController extends ChangeNotifier {
     if (editable) {
       updateDraft(_cart(lines));
       await flush();
+      error = null;
+      changed();
     }
   }
 
